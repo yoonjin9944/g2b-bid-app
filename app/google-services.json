@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "753626692846",
+    "project_id": "g2b-bid-app",
+    "storage_bucket": "g2b-bid-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:753626692846:android:712086013e9a22f58087ff",
+        "android_client_info": {
+          "package_name": "com.g2b.bidapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmsh5ZM41QefUiO4CMzK8fLu2akTmnKSk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
