@@ -1,5 +1,6 @@
 # Android Studio / IntelliJ 설정 파일
 .idea/workspace.xml
+.idea/misc.xml
 .idea/shelf/
 .idea/assetWizardSettings.xml
 .idea/modules.xml
