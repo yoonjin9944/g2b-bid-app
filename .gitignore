@@ -1,4 +1,6 @@
 # Android Studio / IntelliJ 설정 파일
+.idea/
+*.iml
 .idea/workspace.xml
 .idea/misc.xml
 .idea/shelf/
@@ -15,3 +17,4 @@ capture/
 # 로컬 환경 설정
 local.properties
 .claude/
+/.ai/mcp/mcp.json
