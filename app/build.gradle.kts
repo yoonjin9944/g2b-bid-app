@@ -7,7 +7,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.google.services)
+    id("kotlin-parcelize")
+//    alias(libs.plugins.google.services)
 }
 
 val localProps = Properties().apply {
@@ -29,9 +30,11 @@ android {
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "com.g2b.bidapp.HiltTestRunner"
 
-//        buildConfigField("String", "VERSION_NAME", "\"1.0.0\"")
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anon.key", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_CLIENT_ID", "")}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"")
+        buildConfigField("String", "GOGOV_API_KEY", "\"${localProps.getProperty("GOGOV_API_KEY", "")}\"")
     }
 
     buildTypes {
@@ -75,6 +78,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.splash.screen)
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.firebase.messaging)
+    implementation(libs.coroutines.play.services)
 
     // ── Compose BOM ──────────────────────────────────────────────────────────
     val composeBom = platform(libs.androidx.compose.bom)
@@ -134,10 +142,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // ── Firebase (FCM) ───────────────────────────────────────────────────────
-    val firebaseBom = platform(libs.firebase.bom)
-    implementation(firebaseBom)
-    implementation(libs.firebase.messaging)
-    implementation(libs.firebase.analytics)
+//    val firebaseBom = platform(libs.firebase.bom)
+//    implementation(firebaseBom)
+//    implementation(libs.firebase.messaging)
+//    implementation(libs.firebase.analytics)
 
     // ── WorkManager ───────────────────────────────────────────────────────────
     implementation(libs.work.runtime.ktx)
@@ -145,7 +153,7 @@ dependencies {
     // ── Credential Manager (Google Sign-In) ──────────────────────────────────
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
-    implementation(libs.google.identity)
+    implementation(libs.googleid)
 
     // ── Security ─────────────────────────────────────────────────────────────
     implementation(libs.security.crypto)

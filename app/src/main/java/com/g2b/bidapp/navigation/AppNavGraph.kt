@@ -12,6 +12,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.g2b.bidapp.ui.login.LoginScreen
+import com.g2b.bidapp.ui.splash.SplashScreen
 
 @Composable
 fun AppNavGraph(
@@ -22,11 +24,29 @@ fun AppNavGraph(
         startDestination = Screen.Splash.route
     ) {
         composable(Screen.Splash.route) {
-            PlaceholderScreen("SplashScreen")
+            SplashScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+
+                onNavigateToMain = {
+                    navController.navigate(Screen.BidList.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+            )
         }
 
         composable(Screen.Login.route) {
-            PlaceholderScreen("LoginScreen")
+            LoginScreen(
+                onNavigateToBidList = {
+                    navController.navigate(Screen.BidList.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(

@@ -5,7 +5,7 @@ sealed class Screen(val route: String) {
     data object Login : Screen("login")
 
     // 탭 Navigation
-    data object BidList : Screen("bid/list?category={category}") {
+    data object BidList : Screen("bid/list") {
         const val ARG_CATEGORY = "category"
         const val DEFAULT_CATEGORY = "CNSTWK"
 

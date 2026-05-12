@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.g2b.bidapp.navigation.AppNavGraph
-import com.g2b.bidapp.ui.theme.G2bbidappTheme
+import com.g2b.bidapp.ui.theme.G2bBidAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            G2bbidappTheme {
+            G2bBidAppTheme {
                 AppNavGraph()
             }
         }
