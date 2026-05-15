@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.Color
 /** 앱 아이콘 배경, 타이틀 텍스트, Primary 색상 */
 val NavyBlue        = Color(0xFF001E40)
 
+val BidNoticeColor = Color(0xFF43474F)
+
 /** 부제목, 링크 텍스트 */
 val TextGray        = Color(0xFF43474F)
 
