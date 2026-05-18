@@ -34,6 +34,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +52,7 @@ import androidx.paging.compose.itemKey
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.SearchParams
+import com.g2b.bidapp.ui.bid.detail.BidDetailBottomSheet
 import com.g2b.bidapp.ui.components.BidNoticeCard
 import com.g2b.bidapp.ui.components.EmptyView
 import com.g2b.bidapp.ui.components.ErrorView
@@ -60,13 +64,15 @@ private val tabs = listOf(BidCategory.CNSTWK, BidCategory.SERVC, BidCategory.THN
 @Composable
 fun BidListScreen(
     onNavigateToSearch: () -> Unit,
-    onNavigateToDetail: (bidNtceNo: String) -> Unit,
     incomingSearchParams: SearchParams?,
     modifier: Modifier = Modifier,
     viewModel: BidListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val pagingItems = viewModel.pagingDataFlow.collectAsLazyPagingItems()
+
+    var selectedNotice by remember { mutableStateOf<BidNotice?>(null) }
 
     LaunchedEffect(incomingSearchParams) {
         incomingSearchParams?.let { viewModel.applySearchParams(it) }
@@ -100,10 +106,18 @@ fun BidListScreen(
 
             BidListContent(
                 pagingItems = pagingItems,
-                onCardClick = onNavigateToDetail,
+                onCardClick = { notice -> selectedNotice = notice },
                 onRetry = { pagingItems.retry() },
             )
         }
+    }
+
+    selectedNotice?.let { notice ->
+        BidDetailBottomSheet(
+            notice = notice,
+            onDismiss = { selectedNotice = null },
+            isLoggedIn = isLoggedIn,
+        )
     }
 }
 
@@ -165,7 +179,7 @@ private fun CategoryTabRow(
         },
         edgePadding = 0.dp,
     ) {
-        tabs.forEachIndexed { index, category ->
+        tabs.forEachIndexed { _, category ->
             Tab(
                 selected = category == selected,
                 onClick = { onTabSelected(category) },
@@ -217,7 +231,7 @@ private fun ActiveFilterBanner(
 @Composable
 private fun BidListContent(
     pagingItems: LazyPagingItems<BidNotice>,
-    onCardClick: (String) -> Unit,
+    onCardClick: (BidNotice) -> Unit,
     onRetry: () -> Unit,
 ) {
     when {
@@ -252,7 +266,7 @@ private fun BidListContent(
                     pagingItems[index]?.let { notice ->
                         BidNoticeCard(
                             notice = notice,
-                            onCardClick = { onCardClick(notice.bidNtceNo) },
+                            onCardClick = { onCardClick(notice) },
                             onWatchlistToggle = {},
                         )
                     }

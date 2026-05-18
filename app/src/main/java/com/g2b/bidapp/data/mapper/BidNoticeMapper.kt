@@ -19,7 +19,6 @@ fun BidNoticeDto.toModel(category: BidCategory): BidNotice = BidNotice(
     bidNtceDtlUrl = bidNtceDtlUrl,
 )
 
-// TODO: 136090909 금액처리 고려할것
 fun Long.toPriceLabel(): String {
     if (this <= 0L) return "-"
     val uk = this / 100_000_000L

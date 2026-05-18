@@ -8,14 +8,18 @@ import androidx.paging.cachedIn
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.SearchParams
+import com.g2b.bidapp.domain.repository.AuthRepository
 import com.g2b.bidapp.domain.usecase.GetBidNoticeListUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
@@ -27,6 +31,7 @@ data class BidListUiState(
 @HiltViewModel
 class BidListViewModel @Inject constructor(
     private val getBidNoticeListUseCase: GetBidNoticeListUseCase,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -38,6 +43,10 @@ class BidListViewModel @Inject constructor(
         )
     )
     val uiState: StateFlow<BidListUiState> = _uiState.asStateFlow()
+
+    val isLoggedIn: StateFlow<Boolean> = flow {
+        emit(authRepository.getCurrentUser() != null)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagingDataFlow: Flow<PagingData<BidNotice>> = _uiState

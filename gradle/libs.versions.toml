@@ -6,6 +6,7 @@ ksp                     = "2.1.20-1.0.31"
 googleid                = "1.1.1"
 firebaseMessaging       = "24.1.1"
 coroutinesPlayServices  = "1.9.0"
+browser                 = "1.8.0"
 
 # ── AndroidX Core ────────────────────────────────────────────────────────────
 coreKtx                 = "1.16.0"
@@ -79,6 +80,7 @@ securityCrypto          = "1.1.0-alpha06"
 androidx-core-ktx               = { group = "androidx.core",               name = "core-ktx",                          version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx  = { group = "androidx.lifecycle",          name = "lifecycle-runtime-ktx",             version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose       = { group = "androidx.activity",           name = "activity-compose",                  version.ref = "activityCompose" }
+androidx-browser                = { group = "androidx.browser",            name = "browser",                           version.ref = "browser" }
 
 # ── Compose BOM ──────────────────────────────────────────────────────────────
 androidx-compose-bom             = { group = "androidx.compose",           name = "compose-bom",                       version.ref = "composeBom" }

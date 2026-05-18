@@ -64,8 +64,8 @@ class BidNoticeMapperTest {
     }
 
     @Test
-    fun `toPriceLabel 1억5천만원 변환`() {
-        assertEquals("1억 5천만원", 150_000_000L.toPriceLabel())
+    fun `toPriceLabel 1억5000만원 변환`() {
+        assertEquals("1억 5000만원", 150_000_000L.toPriceLabel())
     }
 
     @Test
