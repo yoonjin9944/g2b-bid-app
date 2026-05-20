@@ -83,6 +83,6 @@ class InvalidGoogleTokenException : Exception("유효하지 않은 Google ID Tok
 private inline fun <reified E : Throwable, T> Result<T>.recoverWith(
     crossinline transform: (E) -> Result<T>,
 ): Result<T> = fold(
-    { onSuccess { Result.success(it) } },
-    { onFailure { if (it is E) transform(it) else Result.failure(it) } }
+    onSuccess = { Result.success(it) },
+    onFailure = { if (it is E) transform(it) else Result.failure(it) },
 )

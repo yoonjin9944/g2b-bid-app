@@ -1,6 +1,7 @@
 package com.g2b.bidapp.ui.login
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g2b.bidapp.BuildConfig
@@ -49,10 +50,11 @@ class LoginViewModel @Inject constructor(
 
             if (tokenResult.isFailure) {
                 val cause = tokenResult.exceptionOrNull()
-                _uiState.value = if (cause is UserCancelledSignInException) {
-                    LoginUiState.Idle
+                if (cause is UserCancelledSignInException) {
+                    _uiState.value = LoginUiState.Idle
                 } else {
-                    LoginUiState.Error(cause?.message ?: "Google 로그인에 실패했습니다")
+                    Log.e(TAG, "Google ID 토큰 획득 실패", cause)
+                    _uiState.value = LoginUiState.Error(cause?.message ?: "Google 로그인에 실패했습니다")
                 }
                 return@launch
             }
@@ -66,10 +68,9 @@ class LoginViewModel @Inject constructor(
                     _uiState.value = LoginUiState.Success(user)
                 },
                 onFailure = { e ->
-                    _uiState.value = LoginUiState.Error(
-                        e.message ?: "Supabase 인증에 실패했습니다"
-                    )
-                }
+                    Log.e(TAG, "Supabase 로그인 실패", e)
+                    _uiState.value = LoginUiState.Error(e.message ?: "Supabase 인증에 실패했습니다")
+                },
             )
         }
     }
@@ -90,10 +91,13 @@ class LoginViewModel @Inject constructor(
         runCatching {
             val token = FirebaseMessaging.getInstance().token.await()
             authRepository.upsertFcmToken(userId = userId, fcmToken = token)
+        }.onFailure { e ->
+            Log.w(TAG, "FCM 토큰 등록 실패 (로그인은 성공)", e)
         }
     }
 
     companion object {
+        private const val TAG = "LoginViewModel"
         const val GUEST_USER_ID = "__guest__"
     }
 }

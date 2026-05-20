@@ -65,6 +65,8 @@ fun BidDetailBottomSheet(
     notice: BidNotice,
     onDismiss: () -> Unit,
     isLoggedIn: Boolean = true,
+    // BidListViewModel의 watchedBidNos에서 미리 알고 있는 상태를 전달받아 순간적인 깜빡임 방지
+    initialIsWatched: Boolean = notice.isWatched,
     modifier: Modifier = Modifier,
     viewModel: BidDetailViewModel = hiltViewModel(),
 ) {
@@ -76,7 +78,9 @@ fun BidDetailBottomSheet(
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val isWatched = (uiState as? BidDetailUiState.Success)?.isWatched ?: notice.isWatched
+    // ViewModel이 Room 조회를 완료하면 Success 상태의 isWatched를 사용,
+    // 아직 Idle이면 부모가 전달한 initialIsWatched 사용
+    val isWatched = (uiState as? BidDetailUiState.Success)?.isWatched ?: initialIsWatched
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

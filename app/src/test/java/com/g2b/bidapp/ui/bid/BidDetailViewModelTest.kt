@@ -2,8 +2,13 @@ package com.g2b.bidapp.ui.bid
 
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
+import com.g2b.bidapp.domain.repository.WatchlistRepository
+import com.g2b.bidapp.domain.usecase.AddToWatchlistUseCase
+import com.g2b.bidapp.domain.usecase.RemoveFromWatchlistUseCase
 import com.g2b.bidapp.ui.bid.detail.BidDetailUiState
 import com.g2b.bidapp.ui.bid.detail.BidDetailViewModel
+import io.mockk.mockk
+import kotlinx.coroutines.CoroutineDispatcher
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -12,6 +17,11 @@ import org.junit.Test
 class BidDetailViewModelTest {
 
     private lateinit var viewModel: BidDetailViewModel
+
+    private lateinit var addToWatchlistUseCase: AddToWatchlistUseCase
+    private lateinit var removeFromWatchlistUseCase: RemoveFromWatchlistUseCase
+    private lateinit var watchlistRepository: WatchlistRepository
+    private lateinit var ioDispatcher: CoroutineDispatcher
 
     private val sampleNotice = BidNotice(
         bidNtceNo = "20250001",
@@ -31,7 +41,17 @@ class BidDetailViewModelTest {
 
     @Before
     fun setUp() {
-        viewModel = BidDetailViewModel()
+        addToWatchlistUseCase = mockk(relaxed = true)
+        removeFromWatchlistUseCase = mockk(relaxed = true)
+        watchlistRepository = mockk(relaxed = true)
+        ioDispatcher = mockk(relaxed = true)
+
+        viewModel = BidDetailViewModel(
+            addToWatchlistUseCase = addToWatchlistUseCase,
+            removeFromWatchlistUseCase = removeFromWatchlistUseCase,
+            watchlistRepository = watchlistRepository,
+            ioDispatcher = ioDispatcher
+        )
     }
 
     @Test

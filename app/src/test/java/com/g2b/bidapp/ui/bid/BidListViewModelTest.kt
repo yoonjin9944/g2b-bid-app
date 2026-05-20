@@ -6,7 +6,10 @@ import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.SearchParams
 import com.g2b.bidapp.domain.repository.AuthRepository
+import com.g2b.bidapp.domain.repository.WatchlistRepository
+import com.g2b.bidapp.domain.usecase.AddToWatchlistUseCase
 import com.g2b.bidapp.domain.usecase.GetBidNoticeListUseCase
+import com.g2b.bidapp.domain.usecase.RemoveFromWatchlistUseCase
 import com.g2b.bidapp.ui.bid.list.BidListViewModel
 import io.mockk.every
 import io.mockk.mockk
@@ -31,13 +34,26 @@ class BidListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val useCase = mockk<GetBidNoticeListUseCase>()
     private val authRepository = mockk<AuthRepository>()
+    private lateinit var watchlistRepository: WatchlistRepository
+    private lateinit var addToWatchlistUseCase: AddToWatchlistUseCase
+    private lateinit var removeFromWatchlistUseCase: RemoveFromWatchlistUseCase
     private lateinit var viewModel: BidListViewModel
 
     @Before
     fun setUp() {
+        watchlistRepository = mockk(relaxed = true)
+        addToWatchlistUseCase = mockk(relaxed = true)
+        removeFromWatchlistUseCase = mockk(relaxed = true)
         Dispatchers.setMain(testDispatcher)
         every { useCase(any()) } returns flowOf(PagingData.Companion.empty())
-        viewModel = BidListViewModel(useCase, authRepository, SavedStateHandle())
+        viewModel = BidListViewModel(
+            useCase,
+            authRepository,
+            watchlistRepository,
+            addToWatchlistUseCase,
+            removeFromWatchlistUseCase,
+            SavedStateHandle()
+        )
     }
 
     @After

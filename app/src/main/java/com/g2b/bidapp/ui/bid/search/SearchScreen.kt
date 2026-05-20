@@ -190,6 +190,11 @@ fun SearchScreen(
 
                 FilterLabel("공고일자")
                 Spacer(Modifier.height(8.dp))
+                Text(
+                    "미입력 시 오늘 기준 최근 30일이 자동 적용됩니다",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8)
+                )
                 DateRangeRow(
                     dateFrom = state.dateFrom,
                     dateTo = state.dateTo,
@@ -325,7 +330,7 @@ private fun DateRangeRow(
             onValueChange = onDateFromChange,
             modifier = Modifier.weight(1f),
             placeholder = {
-                Text("시작일 (yyyyMMdd)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
+                Text("시작일 (yyyyMMddHHmm)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
             },
             singleLine = true,
             shape = RoundedCornerShape(8.dp),
@@ -344,7 +349,7 @@ private fun DateRangeRow(
             onValueChange = onDateToChange,
             modifier = Modifier.weight(1f),
             placeholder = {
-                Text("종료일 (yyyyMMdd)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
+                Text("종료일 (yyyyMMddHHmm)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
             },
             singleLine = true,
             shape = RoundedCornerShape(8.dp),

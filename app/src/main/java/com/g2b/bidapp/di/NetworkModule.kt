@@ -1,15 +1,15 @@
 package com.g2b.bidapp.di
 
+import android.util.Log
 import com.g2b.bidapp.BuildConfig
 import com.g2b.bidapp.data.remote.api.BidPublicInfoApi
 import com.g2b.bidapp.data.remote.dto.BidItemsTypeAdapter
-import com.g2b.bidapp.data.remote.dto.BidNoticeDto
 import com.g2b.bidapp.data.remote.dto.BidNoticeItems
 import com.g2b.bidapp.data.remote.interceptor.AuthInterceptor
 import com.g2b.bidapp.data.remote.interceptor.RetryInterceptor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonParser
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,11 +22,52 @@ import java.util.concurrent.*
 import javax.inject.Named
 import javax.inject.Singleton
 
+private const val HTTP_ERROR_CODE_MIN = 400
+private const val HTTP_ERROR_CODE_MAX = 599
+
+private val prettyGson = GsonBuilder().setPrettyPrinting().create()
+
+private fun buildLoggingInterceptor(tag: String): HttpLoggingInterceptor =
+    HttpLoggingInterceptor { message ->
+        if (!BuildConfig.DEBUG) return@HttpLoggingInterceptor
+        when {
+            message.startsWith("-->") -> {
+                Log.d(tag, "┌──────────────────────────── [$tag] ───")
+                Log.d(tag, "│ ▶ ${message.removePrefix("--> ")}")
+            }
+
+            message.startsWith("--> END") -> Log.d(tag, "├─────────────────────────────────────────────")
+            message.startsWith("<--") -> {
+                val code = message.substringAfter("<--").take(3).toIntOrNull() ?: 0
+                val logFn: (String, String) -> Unit =
+                    if (code in HTTP_ERROR_CODE_MIN..HTTP_ERROR_CODE_MAX) Log::w else Log::d
+                logFn(tag, "│ ◀ ${message.removePrefix("<-- ")}")
+            }
+
+            message.startsWith("<-- END") -> Log.d(tag, "└─────────────────────────────────────────────")
+            message.startsWith("{") || message.startsWith("[") -> {
+                try {
+                    prettyGson
+                        .toJson(JsonParser.parseString(message))
+                        .lines()
+                        .forEach { Log.d(tag, "│   $it") }
+                } catch (e: Exception) {
+                    Log.d(tag, "│   $message")
+                    Log.d(tag, "│   $e")
+                }
+            }
+
+            message.isNotBlank() -> Log.d(tag, "│   $message")
+        }
+    }.apply {
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+    }
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://apis.data.go.kr/1230000/"
+    private const val BASE_URL = "https://apis.data.go.kr/1230000/ad/"
     private const val CONNECT_TIMEOUT = 15L
     private const val READ_TIMEOUT = 30L
 
@@ -71,6 +112,7 @@ object NetworkModule {
         retryInterceptor: RetryInterceptor,
         loggingInterceptor: HttpLoggingInterceptor,
     ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(buildLoggingInterceptor("HTTP_BID"))
         .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
         .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
         .addInterceptor(authInterceptor)

@@ -65,17 +65,20 @@ private val tabs = listOf(BidCategory.CNSTWK, BidCategory.SERVC, BidCategory.THN
 fun BidListScreen(
     onNavigateToSearch: () -> Unit,
     incomingSearchParams: SearchParams?,
+    onSearchConsumed: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: BidListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val watchedBidNos by viewModel.watchedBidNos.collectAsStateWithLifecycle()
     val pagingItems = viewModel.pagingDataFlow.collectAsLazyPagingItems()
 
     var selectedNotice by remember { mutableStateOf<BidNotice?>(null) }
 
     LaunchedEffect(incomingSearchParams) {
         incomingSearchParams?.let { viewModel.applySearchParams(it) }
+        onSearchConsumed()
     }
 
     Scaffold(
@@ -106,7 +109,9 @@ fun BidListScreen(
 
             BidListContent(
                 pagingItems = pagingItems,
+                watchedBidNos = watchedBidNos,
                 onCardClick = { notice -> selectedNotice = notice },
+                onWatchlistToggle = { notice -> viewModel.toggleWatchlist(notice) },
                 onRetry = { pagingItems.retry() },
             )
         }
@@ -117,6 +122,7 @@ fun BidListScreen(
             notice = notice,
             onDismiss = { selectedNotice = null },
             isLoggedIn = isLoggedIn,
+            initialIsWatched = notice.bidNtceNo in watchedBidNos,
         )
     }
 }
@@ -231,7 +237,9 @@ private fun ActiveFilterBanner(
 @Composable
 private fun BidListContent(
     pagingItems: LazyPagingItems<BidNotice>,
+    watchedBidNos: Set<String>,
     onCardClick: (BidNotice) -> Unit,
+    onWatchlistToggle: (BidNotice) -> Unit,
     onRetry: () -> Unit,
 ) {
     when {
@@ -266,8 +274,9 @@ private fun BidListContent(
                     pagingItems[index]?.let { notice ->
                         BidNoticeCard(
                             notice = notice,
+                            isWatched = notice.bidNtceNo in watchedBidNos,
                             onCardClick = { onCardClick(notice) },
-                            onWatchlistToggle = {},
+                            onWatchlistToggle = { onWatchlistToggle(notice) },
                         )
                     }
                 }

@@ -53,6 +53,8 @@ fun BidNoticeCard(
     notice: BidNotice,
     onCardClick: () -> Unit,
     onWatchlistToggle: () -> Unit,
+    // 페이징 아이템의 notice.isWatched는 항상 false이므로 Room에서 관찰한 값을 외부에서 주입받음
+    isWatched: Boolean = notice.isWatched,
     modifier: Modifier = Modifier,
 ) {
     val daysRemaining = remember(notice.bidClseDt) { notice.daysRemaining() }
@@ -90,10 +92,10 @@ fun BidNoticeCard(
                 }
                 IconButton(onClick = onWatchlistToggle, modifier = Modifier.size(32.dp)) {
                     Icon(
-                        imageVector = if (notice.isWatched) Icons.Filled.Bookmark
+                        imageVector = if (isWatched) Icons.Filled.Bookmark
                         else Icons.Outlined.BookmarkBorder,
-                        contentDescription = if (notice.isWatched) "관심공고 해제" else "관심공고 추가",
-                        tint = if (notice.isWatched) NavyBlue else Color(0xFF94A3B8),
+                        contentDescription = if (isWatched) "관심공고 해제" else "관심공고 추가",
+                        tint = if (isWatched) NavyBlue else Color(0xFF94A3B8),
                         modifier = Modifier.size(20.dp),
                     )
                 }

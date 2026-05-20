@@ -1,8 +1,11 @@
 package com.g2b.bidapp.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -13,6 +16,7 @@ import androidx.navigation.navArgument
 import com.g2b.bidapp.domain.model.SearchParams
 import com.g2b.bidapp.ui.bid.list.BidListScreen
 import com.g2b.bidapp.ui.bid.search.SearchScreen
+import com.g2b.bidapp.ui.bid.search.SearchSharedViewModel
 import com.g2b.bidapp.ui.login.LoginScreen
 import com.g2b.bidapp.ui.splash.SplashScreen
 
@@ -21,6 +25,9 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    val searchSharedViewModel: SearchSharedViewModel = hiltViewModel()
+    val incomingSearchParams by searchSharedViewModel.pendingParams.collectAsStateWithLifecycle()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
@@ -65,11 +72,14 @@ fun AppNavGraph(
                 .getStateFlow<SearchParams?>("searchParams", null)
             val incomingSearchParams by searchParamsFlow.collectAsStateWithLifecycle()
 
+            LaunchedEffect(incomingSearchParams) {
+                Log.d("NavDebug", "incomingSearchParams=$incomingSearchParams")
+            }
+
             BidListScreen(
-                onNavigateToSearch = {
-                    navController.navigate(Screen.Search.route)
-                },
+                onNavigateToSearch = { navController.navigate(Screen.Search.route) },
                 incomingSearchParams = incomingSearchParams,
+                onSearchConsumed = { searchSharedViewModel.consume() },
             )
         }
 
@@ -78,9 +88,11 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onSearch = { params ->
                     // BidListScreen의 savedStateHandle에 SearchParams 전달
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("searchParams", params)
+//                    navController.previousBackStackEntry
+//                        ?.savedStateHandle
+//                        ?.set("searchParams", params)
+                    // 검색 오류 수정
+                    searchSharedViewModel.submit(params)
                     navController.popBackStack()
                 },
             )

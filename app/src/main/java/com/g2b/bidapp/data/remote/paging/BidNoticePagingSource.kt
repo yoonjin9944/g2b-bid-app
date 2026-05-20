@@ -1,12 +1,16 @@
 package com.g2b.bidapp.data.remote.paging
 
+import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.g2b.bidapp.data.mapper.toModel
 import com.g2b.bidapp.data.remote.api.BidPublicInfoApi
+import com.g2b.bidapp.data.remote.dto.BidNoticeListResponse
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.SearchParams
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class BidNoticePagingSource(
     private val api: BidPublicInfoApi,
@@ -35,43 +39,57 @@ class BidNoticePagingSource(
                 nextKey = nextKey,
             )
         } catch (e: Exception) {
+            Log.e(TAG, "페이지 로드 실패 (page=$pageNo, category=${this@BidNoticePagingSource.params.category})", e)
             LoadResult.Error(e)
         }
     }
 
-    private suspend fun fetchPage(pageNo: Int) = when (params.category) {
-        BidCategory.SERVC -> api.getServcList(
-            pageNo = pageNo,
-            numOfRows = NUM_OF_ROWS,
-            bidNtceNm = params.keyword.ifBlank { null },
-            bidNtceNo = params.bidNtceNo.ifBlank { null },
-            dmInsttNm = params.dmInsttNm.ifBlank { null },
-            inqryBgnDt = params.inqryBgnDt.ifBlank { null },
-            inqryEndDt = params.inqryEndDt.ifBlank { null },
-        )
+    private fun defaultDateRange(): Pair<String, String> {
+        val fmt = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
+        val now = LocalDateTime.now()
+        return now.minusDays(30).format(fmt) to now.format(fmt)
+    }
 
-        BidCategory.THNG -> api.getThngList(
-            pageNo = pageNo,
-            numOfRows = NUM_OF_ROWS,
-            bidNtceNm = params.keyword.ifBlank { null },
-            bidNtceNo = params.bidNtceNo.ifBlank { null },
-            dmInsttNm = params.dmInsttNm.ifBlank { null },
-            inqryBgnDt = params.inqryBgnDt.ifBlank { null },
-            inqryEndDt = params.inqryEndDt.ifBlank { null },
-        )
+    private suspend fun fetchPage(pageNo: Int): BidNoticeListResponse {
+        val (defaultBgn, defaultEnd) = defaultDateRange()
+        val bgnDt = params.inqryBgnDt.ifBlank { defaultBgn }
+        val endDt = params.inqryEndDt.ifBlank { defaultEnd }
 
-        else -> api.getCnstwkList(
-            pageNo = pageNo,
-            numOfRows = NUM_OF_ROWS,
-            bidNtceNm = params.keyword.ifBlank { null },
-            bidNtceNo = params.bidNtceNo.ifBlank { null },
-            dmInsttNm = params.dmInsttNm.ifBlank { null },
-            inqryBgnDt = params.inqryBgnDt.ifBlank { null },
-            inqryEndDt = params.inqryEndDt.ifBlank { null },
-        )
+        return when (params.category) {
+            BidCategory.SERVC -> api.getServcList(
+                pageNo = pageNo,
+                numOfRows = NUM_OF_ROWS,
+                bidNtceNm = params.keyword.ifBlank { null },
+                bidNtceNo = params.bidNtceNo.ifBlank { null },
+                dmInsttNm = params.dmInsttNm.ifBlank { null },
+                inqryBgnDt = bgnDt,
+                inqryEndDt = endDt,
+            )
+
+            BidCategory.THNG -> api.getThngList(
+                pageNo = pageNo,
+                numOfRows = NUM_OF_ROWS,
+                bidNtceNm = params.keyword.ifBlank { null },
+                bidNtceNo = params.bidNtceNo.ifBlank { null },
+                dmInsttNm = params.dmInsttNm.ifBlank { null },
+                inqryBgnDt = bgnDt,
+                inqryEndDt = endDt,
+            )
+
+            else -> api.getCnstwkList(
+                pageNo = pageNo,
+                numOfRows = NUM_OF_ROWS,
+                bidNtceNm = params.keyword.ifBlank { null },
+                bidNtceNo = params.bidNtceNo.ifBlank { null },
+                dmInsttNm = params.dmInsttNm.ifBlank { null },
+                inqryBgnDt = bgnDt,
+                inqryEndDt = endDt,
+            )
+        }
     }
 
     companion object {
+        private const val TAG = "BidNoticePagingSource"
         const val NUM_OF_ROWS = 20
     }
 
