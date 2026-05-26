@@ -10,7 +10,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.UUID
+import java.util.*
 
 private val G2B_LONG = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
 private val G2B_SHORT = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
@@ -41,7 +41,11 @@ private fun String?.g2bToIso8601(): String? = this?.let { raw ->
 }
 
 private fun String?.isoToMillis(): Long? = this?.let {
-    try { Instant.parse(it).toEpochMilli() } catch (_: Exception) { null }
+    try {
+        Instant.parse(it).toEpochMilli()
+    } catch (_: Exception) {
+        null
+    }
 }
 
 fun BidNotice.toWatchedBidEntity(
@@ -117,4 +121,22 @@ fun SupabaseBidNotice.toWatchedBidEntity(
     bidNtceDtlUrl = bidNtceDtlUrl,
     watchedAt = watchedAt.isoToMillis() ?: syncedAt,
     syncedAt = syncedAt,
+)
+
+fun WatchedBid.toEntity(): WatchedBidEntity = WatchedBidEntity(
+    id = id,
+    bidNtceNo = bidNtceNo,
+    bidNtceNm = bidNtceNm,
+    ntceInsttNm = ntceInsttNm,
+    dmInsttNm = dmInsttNm,
+    bidNtceDt = bidNtceDt,
+    bidClseDt = bidClseDt,
+    opengDt = opengDt,
+    presmptPrce = presmptPrce,
+    bdgtAmt = bdgtAmt,
+    bidCategory = bidCategory.apiCode,
+    currentStatus = currentStatus.name,
+    bidNtceDtlUrl = bidNtceDtlUrl,
+    watchedAt = watchedAt,
+    syncedAt = null,
 )

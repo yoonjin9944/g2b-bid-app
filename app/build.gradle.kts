@@ -8,13 +8,15 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     id("kotlin-parcelize")
-//    alias(libs.plugins.google.services)
+    alias(libs.plugins.google.services)
 }
 
 val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) load(file.inputStream())
 }
+
+val kakaoNativeKey = localProps.getProperty("KAKAO_NATIVE_APP_KEY")
 
 android {
     namespace = "com.g2b.bidapp"
@@ -35,6 +37,9 @@ android {
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_CLIENT_ID", "")}\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"")
         buildConfigField("String", "GOGOV_API_KEY", "\"${localProps.getProperty("GOGOV_API_KEY", "")}\"")
+        buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${localProps.getProperty("KAKAO_NATIVE_APP_KEY", "")}\"")
+        buildConfigField("String", "KAKAO_ADMIN_KEY", "\"${localProps.getProperty("KAKAO_ADMIN_KEY", "")}\"")
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoNativeKey
     }
 
     buildTypes {
@@ -76,6 +81,7 @@ ksp {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+    implementation(libs.kakao.all)
 
     // ── AndroidX Core ────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)

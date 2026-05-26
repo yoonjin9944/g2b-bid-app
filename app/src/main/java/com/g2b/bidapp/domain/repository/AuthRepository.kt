@@ -14,4 +14,6 @@ interface AuthRepository {
 
     // 로그인 후 FCM 토큰 Upsert(merge)
     suspend fun upsertFcmToken(userId: String, fcmToken: String): Result<Unit>
+
+    suspend fun signInWithKakao(): Result<Unit>
 }

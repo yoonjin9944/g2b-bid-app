@@ -78,7 +78,7 @@ fun LoginScreen(
         LoginContent(
             isLoading = uiState is LoginUiState.Loading,
             onGoogleSignIn = { viewModel.signInWithGoogle(context as Activity) },
-            onKakaoSignIn = {},
+            onKakaoSignIn = { viewModel.signInWithKakao() },
             onGuestMode = { viewModel.continueAsGuest() },
             modifier = Modifier.padding(innerPadding),
         )

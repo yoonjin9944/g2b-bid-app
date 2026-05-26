@@ -1,5 +1,8 @@
 package com.g2b.bidapp.ui.bid.list
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,12 +77,26 @@ fun BidListScreen(
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val watchedBidNos by viewModel.watchedBidNos.collectAsStateWithLifecycle()
     val pagingItems = viewModel.pagingDataFlow.collectAsLazyPagingItems()
+    val context = LocalContext.current
 
     var selectedNotice by remember { mutableStateOf<BidNotice?>(null) }
+    var lastBackPressTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(incomingSearchParams) {
-        incomingSearchParams?.let { viewModel.applySearchParams(it) }
-        onSearchConsumed()
+        incomingSearchParams?.let {
+            viewModel.applySearchParams(it)
+            onSearchConsumed()
+        }
+    }
+
+    BackHandler {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressTime < 2_000L) {
+            (context as? Activity)?.finish()
+        } else {
+            lastBackPressTime = now
+            Toast.makeText(context, "한 번 더 누르면 앱이 종료됩니다", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Scaffold(

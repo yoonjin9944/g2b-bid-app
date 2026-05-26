@@ -9,6 +9,7 @@ import com.g2b.bidapp.di.IoDispatcher
 import com.g2b.bidapp.domain.model.User
 import com.g2b.bidapp.domain.repository.AuthRepository
 import com.g2b.bidapp.domain.usecase.SignInWithGoogleUseCase
+import com.g2b.bidapp.domain.usecase.SignInWithKakaoUseCase
 import com.g2b.bidapp.domain.usecase.UserCancelledSignInException
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,9 @@ sealed interface LoginUiState {
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    private val signInWithKakaoUseCase: SignInWithKakaoUseCase,
     private val authRepository: AuthRepository,
+
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -72,6 +75,37 @@ class LoginViewModel @Inject constructor(
                     _uiState.value = LoginUiState.Error(e.message ?: "Supabase 인증에 실패했습니다")
                 },
             )
+        }
+    }
+
+    fun signInWithKakao() {
+        if (_uiState.value is LoginUiState.Loading) return
+        _uiState.value = LoginUiState.Loading
+
+        viewModelScope.launch(ioDispatcher) {
+            // [수정] 기존 세션 청소 및 수집 Job 취소 로직은 Repository 영역 내부로 양도되었으므로 제거
+
+            // 1. 카카오 로그인 및 외부 브라우저 세션 콜백 주입 과정을 UseCase를 통해 실행
+            val signInResult = signInWithKakaoUseCase()
+            if (signInResult.isFailure) {
+                val e = signInResult.exceptionOrNull()
+                Log.e(TAG, "카카오 로그인 실패", e)
+                _uiState.value = LoginUiState.Error(e?.message ?: "카카오 로그인 실패")
+                return@launch
+            }
+
+            Log.d(TAG, "카카오 인증 및 백엔드 동기화 완료. 최종 사용자 프로필 조회를 시도합니다.")
+
+            // 2. Repository 내에서 이미 세션 확립 및 유저 데이터 갱신이 끝났으므로 곧바로 유저 정보 수집 가능
+            val user = authRepository.getCurrentUser()
+
+            if (user != null) {
+                registerFcmToken(userId = user.id)
+                _uiState.value = LoginUiState.Success(user)
+            } else {
+                Log.e(TAG, "최종 유저 맵핑 실패 (인증 완료 후 유저 정보 누락)")
+                _uiState.value = LoginUiState.Error("사용자 정보를 가져올 수 없습니다")
+            }
         }
     }
 

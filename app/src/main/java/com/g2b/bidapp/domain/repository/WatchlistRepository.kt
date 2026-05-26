@@ -12,6 +12,9 @@ interface WatchlistRepository {
     suspend fun addToWatchlist(notice: BidNotice): Result<Unit>
     suspend fun removeFromWatchlist(bidNtceNo: String): Result<Unit>
 
+    // 스와이프 삭제 실행취소 시 WatchedBid를 그대로 재삽입
+    suspend fun restoreWatchedBid(bid: WatchedBid): Result<Unit>
+
     // 앱 시작 시 Supabase → Room 단방향 diff 동기화
     suspend fun syncWithSupabase(): Result<Unit>
 }

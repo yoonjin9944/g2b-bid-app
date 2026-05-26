@@ -1,6 +1,7 @@
 package com.g2b.bidapp.data.repository
 
 import com.g2b.bidapp.data.local.dao.WatchedBidDao
+import com.g2b.bidapp.data.mapper.toEntity
 import com.g2b.bidapp.data.mapper.toModel
 import com.g2b.bidapp.data.mapper.toSupabaseBidNotice
 import com.g2b.bidapp.data.mapper.toWatchedBidEntity
@@ -73,6 +74,38 @@ class WatchlistRepositoryImpl @Inject constructor(
             }
             // Supabase 결과 무관하게 Room에서 삭제 (SSOT: Room)
             watchedBidDao.deleteByBidNtceNo(bidNtceNo)
+        }
+    }
+
+    // Snackbar 실행취소 시 WatchedBid를 Room에 재삽입 + Supabase upsert 시도
+    override suspend fun restoreWatchedBid(bid: WatchedBid): Result<Unit> = runCatching {
+        withContext(ioDispatcher) {
+            val entity = bid.toEntity()
+            watchedBidDao.insertOrIgnore(entity)
+
+            val userId = auth.currentUserOrNull()?.id ?: return@withContext
+            runCatching {
+                val supabaseDto = SupabaseBidNotice(
+                    userId = userId,
+                    bidNtceNo = bid.bidNtceNo,
+                    bidNtceNm = bid.bidNtceNm,
+                    ntceInsttNm = bid.ntceInsttNm,
+                    dmInsttNm = bid.dmInsttNm,
+                    bidNtceDt = null,
+                    bidClseDt = null,
+                    opengDt = null,
+                    presmptPrce = bid.presmptPrce,
+                    bdgtAmt = bid.bdgtAmt,
+                    bidCategory = bid.bidCategory.apiCode,
+                    bidNtceDtlUrl = bid.bidNtceDtlUrl,
+                )
+                postgrest.from("bid_notices")
+                    .upsert(supabaseDto) {
+                        onConflict = "user_id,bid_ntce_no"
+                        ignoreDuplicates = false
+                    }
+                watchedBidDao.updateSyncedAt(entity.id, System.currentTimeMillis())
+            }
         }
     }
 
