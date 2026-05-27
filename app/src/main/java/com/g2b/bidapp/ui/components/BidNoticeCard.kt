@@ -34,9 +34,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g2b.bidapp.data.mapper.toPriceLabel
+import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.ui.theme.BidNoticeColor
 import com.g2b.bidapp.ui.theme.NavyBlue
@@ -45,8 +47,17 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
+private enum class BidLifecycleStage {
+    BIDDING,        // 투찰 진행 중 (now < bidClseDt)
+    BIDDING_URGENT, // 마감임박 (3일 이하)
+    AWAITING_OPEN,  // 개찰 대기 (bidClseDt <= now < opengDt)
+    OPENED,         // 개찰일 경과
+    UNKNOWN,        // 날짜 정보 없음
+}
+
 private val DtFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
 private val DtFormatterShort = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
+private val DtFormatterIso = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 @Composable
 fun BidNoticeCard(
@@ -57,10 +68,13 @@ fun BidNoticeCard(
     isWatched: Boolean = notice.isWatched,
     modifier: Modifier = Modifier,
 ) {
+    val stage = remember(notice.bidNtceDt, notice.bidClseDt, notice.opengDt) {
+        notice.resolveLifecycleStage()
+    }
     val daysRemaining = remember(notice.bidClseDt) { notice.daysRemaining() }
-    val statusLabel = remember(daysRemaining) { resolveStatusLabel(daysRemaining) }
-    val statusColor = remember(daysRemaining) { resolveStatusColor(daysRemaining) }
-    val statusTextColor = remember(daysRemaining) { resolveStatusTextColor(daysRemaining) }
+    val lifetimeFraction = remember(notice.bidNtceDt, notice.bidClseDt) {
+        notice.lifetimeFraction()
+    }
 
     Card(
         modifier = modifier
@@ -78,9 +92,9 @@ fun BidNoticeCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     StatusBadge(
-                        label = statusLabel,
-                        containerColor = statusColor,
-                        contentColor = statusTextColor,
+                        label = stage.label(),
+                        containerColor = stage.containerColor(),
+                        contentColor = stage.contentColor(),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -162,19 +176,20 @@ fun BidNoticeCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DeadlineProgressBar(daysRemaining = daysRemaining)
+                    DeadlineProgressBar(stage = stage, fraction = lifetimeFraction)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = when {
-                            daysRemaining == null -> ""
-                            daysRemaining < 0 -> "마감됨"
-                            else -> "D-$daysRemaining"
+                        text = when (stage) {
+                            BidLifecycleStage.UNKNOWN -> ""
+                            BidLifecycleStage.AWAITING_OPEN -> "개찰 대기"
+                            BidLifecycleStage.OPENED -> "개찰"
+                            else -> if (daysRemaining != null && daysRemaining >= 0) "D-$daysRemaining" else "마감"
                         },
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.6.sp,
                         ),
-                        color = daysUrgencyColor(daysRemaining),
+                        color = stage.textColor(),
                     )
                 }
 
@@ -212,15 +227,10 @@ private fun StatusBadge(
 }
 
 @Composable
-private fun DeadlineProgressBar(daysRemaining: Int?) {
-    val fraction = when {
-        daysRemaining == null || daysRemaining < 0 -> 1f
-        daysRemaining == 0 -> 1f
-        daysRemaining >= 30 -> 0f
-        else -> 1f - (daysRemaining / 30f)
-    }
-    val barColor = daysUrgencyColor(daysRemaining)
-
+private fun DeadlineProgressBar(stage: BidLifecycleStage, fraction: Float) {
+    val isPostBid = stage == BidLifecycleStage.AWAITING_OPEN || stage == BidLifecycleStage.OPENED
+    val barColor = if (isPostBid) Color(0xFF94A3B8) else stage.barColor()
+    val barFraction = if (isPostBid) 1f else fraction
     Box(
         modifier = Modifier
             .width(80.dp)
@@ -230,7 +240,7 @@ private fun DeadlineProgressBar(daysRemaining: Int?) {
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(fraction)
+                .fillMaxWidth(barFraction)
                 .height(8.dp)
                 .clip(CircleShape)
                 .background(barColor),
@@ -238,48 +248,123 @@ private fun DeadlineProgressBar(daysRemaining: Int?) {
     }
 }
 
-private fun resolveStatusLabel(daysRemaining: Int?): String = when {
-    daysRemaining == null -> "공고중"
-    daysRemaining < 0 -> "마감"
-    daysRemaining <= 3 -> "마감임박"
-    else -> "공고중"
-}
-
-private fun resolveStatusColor(daysRemaining: Int?): Color = when {
-    daysRemaining == null -> Color(0xFF001E40)
-    daysRemaining < 0 -> Color(0xFFDCE9FF)
-    daysRemaining <= 3 -> Color(0xFFFFDAD6)
-    else -> Color(0xFF001E40)
-}
-
-private fun resolveStatusTextColor(daysRemaining: Int?): Color = when {
-    daysRemaining == null -> Color(0xFF799DD6)
-    daysRemaining < 0 -> BidNoticeColor
-    daysRemaining <= 3 -> StatusCancelled
-    else -> Color(0xFF799DD6)
-}
-
-private fun daysUrgencyColor(daysRemaining: Int?): Color = when {
-    daysRemaining == null || daysRemaining > 7 -> Color(0xFF0060AC)
-    daysRemaining <= 3 -> StatusCancelled
-    else -> Color(0xFF0060AC)
-}
-
-private fun BidNotice.daysRemaining(): Int? {
-    val raw = bidClseDt ?: return null
-    return try {
-        val formatter = if (raw.length >= 14) DtFormatter else DtFormatterShort
-        val clse = LocalDateTime.parse(raw.take(if (raw.length >= 14) 14 else 12), formatter)
-        ChronoUnit.DAYS.between(LocalDateTime.now(), clse).toInt()
-    } catch (_: Exception) {
-        null
+// 날짜 세 필드(bidNtceDt, bidClseDt, opengDt)를 조합해 현재 라이프사이클 단계를 판단
+private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
+    val now = LocalDateTime.now()
+    val clse = bidClseDt?.parseDateTime() ?: return BidLifecycleStage.UNKNOWN
+    val openg = opengDt?.parseDateTime()
+    return when {
+        now < clse -> {
+            val days = ChronoUnit.DAYS.between(now, clse).toInt()
+            if (days <= 3) BidLifecycleStage.BIDDING_URGENT else BidLifecycleStage.BIDDING
+        }
+        openg != null && now < openg -> BidLifecycleStage.AWAITING_OPEN
+        openg != null -> BidLifecycleStage.OPENED
+        else -> BidLifecycleStage.AWAITING_OPEN  // opengDt 없으면 개찰 대기로 표시
     }
 }
 
-private fun String.toDisplayDate(): String = try {
-    val src = if (length >= 14) DtFormatter else DtFormatterShort
-    val dt = LocalDateTime.parse(take(if (length >= 14) 14 else 12), src)
-    dt.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm"))
+// 공고일(bidNtceDt) → 마감일(bidClseDt) 구간 기준 경과 비율 (0f ~ 1f)
+// bidNtceDt가 없으면(목록 API 미포함) 마감까지 남은 일수를 60일 기준으로 역산
+private fun BidNotice.lifetimeFraction(): Float {
+    val end = bidClseDt?.parseDateTime() ?: return 0f
+    val now = LocalDateTime.now()
+    if (now >= end) return 1f
+    val start = bidNtceDt?.parseDateTime()
+    return if (start != null && start < end) {
+        val total = ChronoUnit.SECONDS.between(start, end).toFloat()
+        (ChronoUnit.SECONDS.between(start, now).toFloat() / total).coerceIn(0f, 1f)
+    } else {
+        val daysLeft = ChronoUnit.DAYS.between(now, end).toFloat().coerceAtLeast(0f)
+        (1f - (daysLeft / 60f)).coerceIn(0f, 1f)
+    }
+}
+
+private fun BidNotice.daysRemaining(): Int? {
+    val clse = bidClseDt?.parseDateTime() ?: return null
+    return ChronoUnit.DAYS.between(LocalDateTime.now(), clse).toInt()
+}
+
+private fun String.parseDateTime(): LocalDateTime? = try {
+    when {
+        contains('-') -> LocalDateTime.parse(take(19), DtFormatterIso)  // "yyyy-MM-dd HH:mm:ss"
+        length >= 14  -> LocalDateTime.parse(take(14), DtFormatter)      // "yyyyMMddHHmmss"
+        else          -> LocalDateTime.parse(take(12), DtFormatterShort) // "yyyyMMddHHmm"
+    }
 } catch (_: Exception) {
-    this
+    null
+}
+
+private fun String.toDisplayDate(): String {
+    val dt = parseDateTime() ?: return this
+    return dt.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm"))
+}
+
+private fun BidLifecycleStage.label() = when (this) {
+    BidLifecycleStage.BIDDING -> "투찰중"
+    BidLifecycleStage.BIDDING_URGENT -> "마감임박"
+    BidLifecycleStage.AWAITING_OPEN -> "개찰 대기"
+    BidLifecycleStage.OPENED -> "개찰"
+    BidLifecycleStage.UNKNOWN -> "공고중"
+}
+
+private fun BidLifecycleStage.containerColor() = when (this) {
+    BidLifecycleStage.BIDDING, BidLifecycleStage.UNKNOWN -> Color(0xFF001E40)
+    BidLifecycleStage.BIDDING_URGENT -> Color(0xFFFFDAD6)
+    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFFECEFF1)
+}
+
+private fun BidLifecycleStage.contentColor() = when (this) {
+    BidLifecycleStage.BIDDING, BidLifecycleStage.UNKNOWN -> Color(0xFF799DD6)
+    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
+    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFF6E7680)
+}
+
+private fun BidLifecycleStage.textColor() = when (this) {
+    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
+    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFF6E7680)
+    else -> Color(0xFF0060AC)
+}
+
+private fun BidLifecycleStage.barColor() = when (this) {
+    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
+    else -> Color(0xFF0060AC)
+}
+
+private fun sampleBidNotice() = BidNotice(
+    bidNtceNo = "20240001234",
+    bidNtceOrd = "000",
+    bidNtceNm = "2024년도 시설물 유지보수 공사",
+    ntceInsttNm = "서울특별시",
+    dmInsttNm = "서울특별시 강남구",
+    bidNtceDt = "202405010900",
+    bidClseDt = "202406300900",
+    opengDt = null,
+    presmptPrce = 250000000L,
+    bdgtAmt = null,
+    bidCategory = BidCategory.CNSTWK,
+    bidNtceDtlUrl = null,
+    isWatched = false,
+)
+
+@Preview(showBackground = true, backgroundColor = 0xFFF8F9FF, name = "BidNoticeCard - 기본")
+@Composable
+private fun BidNoticeCardPreview() {
+    BidNoticeCard(
+        notice = sampleBidNotice(),
+        isWatched = false,
+        onCardClick = {},
+        onWatchlistToggle = {},
+    )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFF8F9FF, name = "BidNoticeCard - 관심공고 등록")
+@Composable
+private fun BidNoticeCardWatchedPreview() {
+    BidNoticeCard(
+        notice = sampleBidNotice(),
+        isWatched = true,
+        onCardClick = {},
+        onWatchlistToggle = {},
+    )
 }

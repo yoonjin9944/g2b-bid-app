@@ -75,6 +75,9 @@ composeUiTestJunit4     = "1.8.1"
 
 # ── Security ─────────────────────────────────────────────────────────────────
 securityCrypto          = "1.1.0-alpha06"
+lifecycleService        = "2.10.0"
+datastore               = "1.1.1"
+hiltWork                = "1.2.0"
 
 [libraries]
 # ── AndroidX Core ────────────────────────────────────────────────────────────
@@ -160,6 +163,9 @@ googleid                        = { module = "com.google.android.libraries.ident
 
 # ── Security ─────────────────────────────────────────────────────────────────
 security-crypto                 = { group = "androidx.security",           name = "security-crypto",                   version.ref = "securityCrypto" }
+datastore-preferences           = { group = "androidx.datastore",           name = "datastore-preferences",             version.ref = "datastore" }
+hilt-work                       = { group = "androidx.hilt",                name = "hilt-work",                         version.ref = "hiltWork" }
+androidx-hilt-compiler          = { group = "androidx.hilt",                name = "hilt-compiler",                     version.ref = "hiltWork" }
 
 # ── Test ─────────────────────────────────────────────────────────────────────
 junit                           = { group = "junit",                       name = "junit",                             version.ref = "junit" }
@@ -172,6 +178,7 @@ mockwebserver                   = { group = "com.squareup.okhttp3",        name 
 arch-core-testing               = { group = "androidx.arch.core",          name = "core-testing",                      version.ref = "archCoreTesting" }
 paging-testing                  = { group = "androidx.paging",             name = "paging-testing",                    version.ref = "pagingTesting" }
 hilt-android-testing            = { group = "com.google.dagger",           name = "hilt-android-testing",              version.ref = "hiltTesting" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 
 [plugins]
 android-application             = { id = "com.android.application",                    version.ref = "agp" }

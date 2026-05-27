@@ -1,26 +1,37 @@
 package com.g2b.bidapp.data.repository
 
+import android.content.Context
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.g2b.bidapp.data.local.dao.WatchedBidDao
 import com.g2b.bidapp.data.mapper.toEntity
 import com.g2b.bidapp.data.mapper.toModel
 import com.g2b.bidapp.data.mapper.toSupabaseBidNotice
 import com.g2b.bidapp.data.mapper.toWatchedBidEntity
 import com.g2b.bidapp.data.supabase.dto.SupabaseBidNotice
+import com.g2b.bidapp.data.worker.WatchlistSyncWorker
 import com.g2b.bidapp.di.IoDispatcher
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.domain.repository.WatchlistRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WatchlistRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val watchedBidDao: WatchedBidDao,
     private val auth: Auth,
     private val postgrest: Postgrest,
@@ -124,7 +135,22 @@ class WatchlistRepositoryImpl @Inject constructor(
                 .filter { it.bidNtceNo !in localNos }
                 .forEach { dto -> watchedBidDao.insertOrIgnore(dto.toWatchedBidEntity()) }
 
-            // TODO: Phase 8 — Room-only(syncedAt = null) 항목을 WorkManager 재시도 큐에 등록
+            // Room-only(syncedAt = null) 항목을 WorkManager 재시도 큐에 등록
+            val hasUnsynced = watchedBidDao.getUnsynced().isNotEmpty()
+            if (hasUnsynced) {
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    "watchlist_sync",
+                    ExistingWorkPolicy.REPLACE,
+                    OneTimeWorkRequestBuilder<WatchlistSyncWorker>()
+                        .setConstraints(
+                            Constraints.Builder()
+                                .setRequiredNetworkType(NetworkType.CONNECTED)
+                                .build()
+                        )
+                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                        .build()
+                )
+            }
         }
     }
 }

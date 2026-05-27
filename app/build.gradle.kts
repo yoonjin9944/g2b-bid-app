@@ -80,6 +80,7 @@ ksp {
 }
 
 dependencies {
+    implementation(libs.androidx.lifecycle.service)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
     implementation(libs.kakao.all)
 
@@ -158,8 +159,13 @@ dependencies {
 //    implementation(libs.firebase.messaging)
 //    implementation(libs.firebase.analytics)
 
-    // ── WorkManager ───────────────────────────────────────────────────────────
+    // ── WorkManager + Hilt Work ───────────────────────────────────────────────
     implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
+    // ── DataStore ─────────────────────────────────────────────────────────────
+    implementation(libs.datastore.preferences)
 
     // ── Credential Manager (Google Sign-In) ──────────────────────────────────
     implementation(libs.credentials)

@@ -26,15 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g2b.bidapp.data.mapper.toPriceLabel
+import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.ui.components.BidStatusBadge
 import com.g2b.bidapp.ui.theme.BidNoticeColor
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 private val displayFormat = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.KOREA)
 
@@ -140,4 +141,53 @@ fun WatchedBidCard(
 }
 
 private fun Long.toDisplayDate(): String =
-    try { displayFormat.format(Date(this)) } catch (_: Exception) { "-" }
+    try {
+        displayFormat.format(Date(this))
+    } catch (_: Exception) {
+        "-"
+    }
+
+private fun sampleWatchedBid() = WatchedBid(
+    id = "sample-id",
+    bidNtceNo = "20240001234",
+    bidNtceNm = "2024년도 시설물 유지보수 공사 (샘플 공고명)",
+    ntceInsttNm = "서울특별시",
+    dmInsttNm = "서울특별시 강남구",
+    bidNtceDt = 0L,
+    bidClseDt = 70L,
+    opengDt = null,
+    presmptPrce = 250000000L,
+    bdgtAmt = null,
+    bidCategory = com.g2b.bidapp.domain.model.BidCategory.CNSTWK,
+    currentStatus = BidStatus.REGISTERED,
+    bidNtceDtlUrl = null,
+    watchedAt = System.currentTimeMillis(),
+    syncedAt = System.currentTimeMillis(),
+)
+
+@Preview(showBackground = true, name = "WatchedBidCard - 기본")
+@Composable
+private fun WatchedBidCardPreview() {
+    WatchedBidCard(
+        bid = sampleWatchedBid(),
+        onClick = {},
+    )
+}
+
+@Preview(showBackground = true, name = "WatchedBidCard - 변경됨")
+@Composable
+private fun WatchedBidCardChangedPreview() {
+    WatchedBidCard(
+        bid = sampleWatchedBid().copy(currentStatus = BidStatus.CHANGED),
+        onClick = {},
+    )
+}
+
+@Preview(showBackground = true, name = "WatchedBidCard - 변경됨")
+@Composable
+private fun WatchedBidCardCancelledPreview() {
+    WatchedBidCard(
+        bid = sampleWatchedBid().copy(currentStatus = BidStatus.CANCELLED),
+        onClick = {},
+    )
+}

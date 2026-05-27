@@ -3,6 +3,7 @@ package com.g2b.bidapp.data.repository
 import android.util.Log
 import com.g2b.bidapp.domain.model.User
 import com.g2b.bidapp.domain.repository.AuthRepository
+import com.google.firebase.messaging.FirebaseMessaging
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.parseSessionFromUrl
 import io.github.jan.supabase.auth.providers.Google
@@ -12,6 +13,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
@@ -33,6 +35,13 @@ class AuthRepositoryImpl @Inject constructor(
 
         // [수정] 클라이언트 측 postgrest.from("users").upsert 로직을 완전히 제거했습니다.
         // 데이터베이스의 AFTER INSERT 트리거가 public.users 테이블 적재를 자동으로 처리합니다.
+
+        try {
+            val token = FirebaseMessaging.getInstance().token.await()
+            upsertFcmToken(supabaseUser.id, token)
+        } catch (_: Exception) {
+
+        }
 
         User(
             id = supabaseUser.id,
@@ -116,6 +125,13 @@ class AuthRepositoryImpl @Inject constructor(
 
                 val supabaseUser = auth.retrieveUserForCurrentSession(updateSession = true)
                 Log.d("AuthRepository", "서버 유저 정보 동기화 완벽 완료: ${supabaseUser.id}")
+
+                try {
+                    val token = FirebaseMessaging.getInstance().token.await()
+                    upsertFcmToken(supabaseUser.id, token)
+                } catch (_: Exception) {
+
+                }
 
                 Unit
             } else {

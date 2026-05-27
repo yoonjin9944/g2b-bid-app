@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.g2b.bidapp.data.local.G2bDatabase
 import com.g2b.bidapp.data.local.dao.BidStatusHistoryDao
+import com.g2b.bidapp.data.local.dao.NotificationDao
 import com.g2b.bidapp.data.local.dao.WatchedBidDao
 import dagger.Module
 import dagger.Provides
@@ -38,4 +39,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideBidStatusHistoryDao(db: G2bDatabase): BidStatusHistoryDao = db.bidStatusHistoryDao()
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(db: G2bDatabase): NotificationDao = db.notificationDao()
 }

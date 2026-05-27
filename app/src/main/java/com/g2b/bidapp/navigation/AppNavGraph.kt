@@ -34,6 +34,8 @@ import com.g2b.bidapp.ui.bid.search.SearchScreen
 import com.g2b.bidapp.ui.bid.search.SearchSharedViewModel
 import com.g2b.bidapp.ui.bid.watchlist.WatchlistScreen
 import com.g2b.bidapp.ui.login.LoginScreen
+import com.g2b.bidapp.ui.notification.NotificationListScreen
+import com.g2b.bidapp.ui.settings.SettingsScreen
 import com.g2b.bidapp.ui.splash.SplashScreen
 import com.g2b.bidapp.ui.theme.NavyBlue
 
@@ -166,10 +168,19 @@ fun AppNavGraph(
                 WatchlistScreen()
             }
 
-            // Phase 8에서 구현 예정
             composable(Screen.BidResult.route) { }
-            composable(Screen.Notifications.route) { }
-            composable(Screen.Settings.route) { }
+            composable(Screen.Notifications.route) {
+                NotificationListScreen()
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onLoggedOut = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
         }
     }
 }

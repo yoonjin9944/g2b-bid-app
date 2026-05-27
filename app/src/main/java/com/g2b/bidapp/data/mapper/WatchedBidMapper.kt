@@ -123,6 +123,31 @@ fun SupabaseBidNotice.toWatchedBidEntity(
     syncedAt = syncedAt,
 )
 
+fun WatchedBidEntity.toSupabaseBidNotice(userId: String): SupabaseBidNotice {
+    fun Long?.toIso() = this?.let {
+        Instant.ofEpochMilli(it)
+            .atOffset(ZoneOffset.ofHours(9))
+            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+    }
+    return SupabaseBidNotice(
+        id = id,
+        userId = userId,
+        bidNtceNo = bidNtceNo,
+        bidNtceNm = bidNtceNm,
+        ntceInsttNm = ntceInsttNm,
+        dmInsttNm = dmInsttNm,
+        bidNtceDt = bidNtceDt.toIso(),
+        bidClseDt = bidClseDt.toIso(),
+        opengDt = opengDt.toIso(),
+        presmptPrce = presmptPrce,
+        bdgtAmt = bdgtAmt,
+        bidCategory = bidCategory,
+        currentStatus = currentStatus,
+        bidNtceDtlUrl = bidNtceDtlUrl,
+        watchedAt = watchedAt.toIso(),
+    )
+}
+
 fun WatchedBid.toEntity(): WatchedBidEntity = WatchedBidEntity(
     id = id,
     bidNtceNo = bidNtceNo,

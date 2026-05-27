@@ -47,6 +47,17 @@
                     android:name="android.support.FILE_PROVIDER_PATHS"
                     android:resource="@xml/file_provider_paths"/>
         </provider>
+
+        <service
+                android:name=".data.service.G2bFirebaseMessagingService"
+                android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+        <service
+                android:name=".data.service.SupabaseRealtimeService"
+                android:exported="false"/>
     </application>
 
 </manifest>

@@ -5,57 +5,93 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.g2b.bidapp.data.mapper.toModel
 import com.g2b.bidapp.data.remote.api.BidPublicInfoApi
-import com.g2b.bidapp.data.remote.dto.BidNoticeListResponse
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.SearchParams
-import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.ceil
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
+/**
+ * 날짜 역방향 슬라이딩 페이지 전략
+ *
+ * key(daysBack) = 0 → 기준 종료일, 1 → 하루 전, 2 → 이틀 전 …
+ * 하루 단위로 조회해 bidNtceDt 내림차순 정렬 → 전체 목록이 최신순 보장
+ *
+ * 누락 방지:
+ *   - numOfRows = 999 로 1회 호출에 최대한 많이 수집
+ *   - totalCount > 999 시 나머지 페이지를 병렬 fetch 후 합산
+ */
 class BidNoticePagingSource(
     private val api: BidPublicInfoApi,
     private val params: SearchParams,
 ) : PagingSource<Int, BidNotice>() {
 
-    override fun getRefreshKey(state: PagingState<Int, BidNotice>): Int? =
-        state.anchorPosition?.let { anchor ->
-            state.closestPageToPosition(anchor)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchor)?.nextKey?.minus(1)
-        }
+    private val dateFmt = DateTimeFormatter.ofPattern("yyyyMMdd")
+
+    private val endDateBase: LocalDate = params.inqryEndDt
+        .take(8).takeIf { it.length == 8 }
+        ?.let { runCatching { LocalDate.parse(it, dateFmt) }.getOrNull() }
+        ?: LocalDate.now()
+
+    private val startDateLimit: LocalDate = params.inqryBgnDt
+        .take(8).takeIf { it.length == 8 }
+        ?.let { runCatching { LocalDate.parse(it, dateFmt) }.getOrNull() }
+        ?: endDateBase.minusDays(60)
+
+    override fun getRefreshKey(state: PagingState<Int, BidNotice>): Int? = null
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, BidNotice> {
-        val pageNo = params.key ?: 1
-        return try {
-            val response = fetchPage(pageNo)
-            val body = response.response?.body
-            val totalCount = body?.totalCount ?: 0
-            val items = body?.items?.item ?: emptyList()
-            val notices = items.map { it.toModel(this@BidNoticePagingSource.params.category ?: BidCategory.CNSTWK) }
-            val nextKey = if (pageNo * NUM_OF_ROWS >= totalCount) null else pageNo + 1
+        val daysBack = params.key ?: 0
+        val targetDate = endDateBase.minusDays(daysBack.toLong())
 
-            LoadResult.Page(
-                data = notices,
-                prevKey = null,
-                nextKey = nextKey,
-            )
+        if (targetDate < startDateLimit) {
+            return LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
+        }
+
+        val bgnDt = targetDate.format(dateFmt) + "0000"
+        val endDt = targetDate.format(dateFmt) + "2359"
+
+        return try {
+            val firstResponse = fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = 1)
+            val totalCount = firstResponse.response?.body?.totalCount ?: 0
+            val totalPages = ceil(totalCount.toFloat() / NUM_OF_ROWS).toInt().coerceAtLeast(1)
+
+            val allDtos = if (totalPages <= 1) {
+                firstResponse.response?.body?.items?.item ?: emptyList()
+            } else {
+                // totalCount > 999인 날: 나머지 페이지 병렬 fetch
+                coroutineScope {
+                    val extraDeferreds = (2..totalPages).map { pageNo ->
+                        async { fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = pageNo) }
+                    }
+                    val firstItems = firstResponse.response?.body?.items?.item ?: emptyList()
+                    val extraItems = extraDeferreds.awaitAll()
+                        .flatMap { it.response?.body?.items?.item ?: emptyList() }
+                    firstItems + extraItems
+                }
+            }
+
+            val notices = allDtos
+                .map { it.toModel(this.params.category ?: BidCategory.CNSTWK) }
+                .sortedByDescending { it.bidNtceDt }
+
+            val nextDaysBack = daysBack + 1
+            val nextDate = endDateBase.minusDays(nextDaysBack.toLong())
+            val nextKey = if (nextDate < startDateLimit) null else nextDaysBack
+
+            LoadResult.Page(data = notices, prevKey = null, nextKey = nextKey)
         } catch (e: Exception) {
-            Log.e(TAG, "페이지 로드 실패 (page=$pageNo, category=${this@BidNoticePagingSource.params.category})", e)
+            Log.e(TAG, "페이지 로드 실패 (daysBack=$daysBack, date=$targetDate, category=${this.params.category})", e)
             LoadResult.Error(e)
         }
     }
 
-    private fun defaultDateRange(): Pair<String, String> {
-        val fmt = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
-        val now = LocalDateTime.now()
-        return now.minusDays(30).format(fmt) to now.format(fmt)
-    }
-
-    private suspend fun fetchPage(pageNo: Int): BidNoticeListResponse {
-        val (defaultBgn, defaultEnd) = defaultDateRange()
-        val bgnDt = params.inqryBgnDt.ifBlank { defaultBgn }
-        val endDt = params.inqryEndDt.ifBlank { defaultEnd }
-
-        return when (params.category) {
+    private suspend fun fetchDay(bgnDt: String, endDt: String, pageNo: Int) =
+        when (params.category) {
             BidCategory.SERVC -> api.getServcList(
                 pageNo = pageNo,
                 numOfRows = NUM_OF_ROWS,
@@ -65,7 +101,6 @@ class BidNoticePagingSource(
                 inqryBgnDt = bgnDt,
                 inqryEndDt = endDt,
             )
-
             BidCategory.THNG -> api.getThngList(
                 pageNo = pageNo,
                 numOfRows = NUM_OF_ROWS,
@@ -75,7 +110,6 @@ class BidNoticePagingSource(
                 inqryBgnDt = bgnDt,
                 inqryEndDt = endDt,
             )
-
             else -> api.getCnstwkList(
                 pageNo = pageNo,
                 numOfRows = NUM_OF_ROWS,
@@ -86,11 +120,9 @@ class BidNoticePagingSource(
                 inqryEndDt = endDt,
             )
         }
-    }
 
     companion object {
         private const val TAG = "BidNoticePagingSource"
-        const val NUM_OF_ROWS = 20
+        const val NUM_OF_ROWS = 999
     }
-
 }

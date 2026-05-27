@@ -41,4 +41,10 @@ interface WatchedBidDao {
 
     @Query("UPDATE watched_bids SET current_status = :newStatus, synced_at = :syncedAt WHERE id = :id")
     suspend fun updateStatus(id: String, newStatus: String, syncedAt: Long)
+
+    @Query("UPDATE watched_bids SET current_status = :status WHERE bid_ntce_no = :bidNtceNo")
+    suspend fun updateStatus(bidNtceNo: String, status: String)
+
+    @Query("SELECT * FROM watched_bids WHERE synced_at IS NULL")
+    suspend fun getUnsynced(): List<WatchedBidEntity>
 }

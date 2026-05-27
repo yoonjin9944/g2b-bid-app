@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -162,11 +163,11 @@ private fun BidListTopAppBar(
                 color = NavyBlue,
             )
         },
-        navigationIcon = {
-            IconButton(onClick = {}) {
-                Icon(Icons.Outlined.Menu, contentDescription = "메뉴", tint = NavyBlue)
-            }
-        },
+//        navigationIcon = {
+//            IconButton(onClick = {}) {
+//                Icon(Icons.Outlined.Menu, contentDescription = "메뉴", tint = NavyBlue)
+//            }
+//        },
         actions = {
             IconButton(onClick = onSearchClick) {
                 Icon(
@@ -328,4 +329,22 @@ private fun BidListContent(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BidListTopAppBarPreview() {
+    BidListTopAppBar(hasActiveFilter = false, onSearchClick = {})
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BidListTopAppBarActivityPreview() {
+    BidListTopAppBar(hasActiveFilter = true, onSearchClick = {})
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CategoryTabRowPreview() {
+    CategoryTabRow(selected = BidCategory.CNSTWK, onTabSelected = {})
 }
