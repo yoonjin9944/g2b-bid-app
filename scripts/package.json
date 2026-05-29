@@ -1,0 +1,9 @@
+{
+  "name": "g2b-polling-scripts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "axios": "^1.6.0",
+    "google-auth-library": "^9.10.0"
+  }
+}
