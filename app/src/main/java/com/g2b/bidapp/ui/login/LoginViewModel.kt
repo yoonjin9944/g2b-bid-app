@@ -8,6 +8,7 @@ import com.g2b.bidapp.BuildConfig
 import com.g2b.bidapp.di.IoDispatcher
 import com.g2b.bidapp.domain.model.User
 import com.g2b.bidapp.domain.repository.AuthRepository
+import com.g2b.bidapp.domain.repository.WatchlistRepository
 import com.g2b.bidapp.domain.usecase.SignInWithGoogleUseCase
 import com.g2b.bidapp.domain.usecase.SignInWithKakaoUseCase
 import com.g2b.bidapp.domain.usecase.UserCancelledSignInException
@@ -34,7 +35,7 @@ class LoginViewModel @Inject constructor(
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
     private val signInWithKakaoUseCase: SignInWithKakaoUseCase,
     private val authRepository: AuthRepository,
-
+    private val watchlistRepository: WatchlistRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -68,6 +69,7 @@ class LoginViewModel @Inject constructor(
             signInResult.fold(
                 onSuccess = { user ->
                     registerFcmToken(userId = user.id)
+                    watchlistRepository.syncWithSupabase()
                     _uiState.value = LoginUiState.Success(user)
                 },
                 onFailure = { e ->
@@ -101,6 +103,7 @@ class LoginViewModel @Inject constructor(
 
             if (user != null) {
                 registerFcmToken(userId = user.id)
+                watchlistRepository.syncWithSupabase()
                 _uiState.value = LoginUiState.Success(user)
             } else {
                 Log.e(TAG, "최종 유저 맵핑 실패 (인증 완료 후 유저 정보 누락)")

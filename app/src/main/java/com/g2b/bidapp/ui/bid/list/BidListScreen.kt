@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,6 +61,7 @@ import com.g2b.bidapp.ui.components.BidNoticeCard
 import com.g2b.bidapp.ui.components.EmptyView
 import com.g2b.bidapp.ui.components.ErrorView
 import com.g2b.bidapp.ui.theme.NavyBlue
+import com.g2b.bidapp.util.toDisplayDate
 
 private val tabs = listOf(BidCategory.CNSTWK, BidCategory.SERVC, BidCategory.THNG)
 
@@ -229,7 +229,7 @@ private fun ActiveFilterBanner(
     val summary = buildList {
         if (params.keyword.isNotBlank()) add("\"${params.keyword}\"")
         if (params.dmInsttNm.isNotBlank()) add(params.dmInsttNm)
-        if (params.inqryBgnDt.isNotBlank()) add("${params.inqryBgnDt} ~")
+        if (params.inqryBgnDt.isNotBlank()) add("${params.inqryBgnDt.toDisplayDate()} ~ ${params.inqryEndDt.toDisplayDate()}")
     }.joinToString(" · ")
 
     Row(

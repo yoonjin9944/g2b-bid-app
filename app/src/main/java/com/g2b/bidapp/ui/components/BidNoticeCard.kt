@@ -37,14 +37,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.g2b.bidapp.data.mapper.toPriceLabel
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.ui.theme.BidNoticeColor
 import com.g2b.bidapp.ui.theme.NavyBlue
 import com.g2b.bidapp.ui.theme.StatusCancelled
+import com.g2b.bidapp.util.parseG2bDateTime
+import com.g2b.bidapp.util.toDisplayDateTime
+import com.g2b.bidapp.util.toPriceLabel
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 private enum class BidLifecycleStage {
@@ -54,10 +55,6 @@ private enum class BidLifecycleStage {
     OPENED,         // 개찰일 경과
     UNKNOWN,        // 날짜 정보 없음
 }
-
-private val DtFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-private val DtFormatterShort = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
-private val DtFormatterIso = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 @Composable
 fun BidNoticeCard(
@@ -158,7 +155,7 @@ fun BidNoticeCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "마감일시: ${notice.bidClseDt?.toDisplayDate() ?: "-"}",
+                    text = "마감일시: ${notice.bidClseDt?.toDisplayDateTime() ?: "-"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF43474F),
                 )
@@ -251,8 +248,8 @@ private fun DeadlineProgressBar(stage: BidLifecycleStage, fraction: Float) {
 // 날짜 세 필드(bidNtceDt, bidClseDt, opengDt)를 조합해 현재 라이프사이클 단계를 판단
 private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
     val now = LocalDateTime.now()
-    val clse = bidClseDt?.parseDateTime() ?: return BidLifecycleStage.UNKNOWN
-    val openg = opengDt?.parseDateTime()
+    val clse = bidClseDt?.parseG2bDateTime() ?: return BidLifecycleStage.UNKNOWN
+    val openg = opengDt?.parseG2bDateTime()
     return when {
         now < clse -> {
             val days = ChronoUnit.DAYS.between(now, clse).toInt()
@@ -267,10 +264,10 @@ private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
 // 공고일(bidNtceDt) → 마감일(bidClseDt) 구간 기준 경과 비율 (0f ~ 1f)
 // bidNtceDt가 없으면(목록 API 미포함) 마감까지 남은 일수를 60일 기준으로 역산
 private fun BidNotice.lifetimeFraction(): Float {
-    val end = bidClseDt?.parseDateTime() ?: return 0f
+    val end = bidClseDt?.parseG2bDateTime() ?: return 0f
     val now = LocalDateTime.now()
     if (now >= end) return 1f
-    val start = bidNtceDt?.parseDateTime()
+    val start = bidNtceDt?.parseG2bDateTime()
     return if (start != null && start < end) {
         val total = ChronoUnit.SECONDS.between(start, end).toFloat()
         (ChronoUnit.SECONDS.between(start, now).toFloat() / total).coerceIn(0f, 1f)
@@ -281,23 +278,8 @@ private fun BidNotice.lifetimeFraction(): Float {
 }
 
 private fun BidNotice.daysRemaining(): Int? {
-    val clse = bidClseDt?.parseDateTime() ?: return null
+    val clse = bidClseDt?.parseG2bDateTime() ?: return null
     return ChronoUnit.DAYS.between(LocalDateTime.now(), clse).toInt()
-}
-
-private fun String.parseDateTime(): LocalDateTime? = try {
-    when {
-        contains('-') -> LocalDateTime.parse(take(19), DtFormatterIso)  // "yyyy-MM-dd HH:mm:ss"
-        length >= 14  -> LocalDateTime.parse(take(14), DtFormatter)      // "yyyyMMddHHmmss"
-        else          -> LocalDateTime.parse(take(12), DtFormatterShort) // "yyyyMMddHHmm"
-    }
-} catch (_: Exception) {
-    null
-}
-
-private fun String.toDisplayDate(): String {
-    val dt = parseDateTime() ?: return this
-    return dt.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm"))
 }
 
 private fun BidLifecycleStage.label() = when (this) {

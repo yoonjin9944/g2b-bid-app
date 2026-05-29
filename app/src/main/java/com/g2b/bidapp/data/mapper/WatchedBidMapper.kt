@@ -49,10 +49,12 @@ private fun String?.isoToMillis(): Long? = this?.let {
 }
 
 fun BidNotice.toWatchedBidEntity(
+    userId: String,
     id: String = UUID.randomUUID().toString(),
     watchedAt: Long = System.currentTimeMillis(),
 ): WatchedBidEntity = WatchedBidEntity(
     id = id,
+    userId = userId,
     bidNtceNo = bidNtceNo,
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,
@@ -107,6 +109,7 @@ fun SupabaseBidNotice.toWatchedBidEntity(
     syncedAt: Long = System.currentTimeMillis(),
 ): WatchedBidEntity = WatchedBidEntity(
     id = id ?: UUID.randomUUID().toString(),
+    userId = userId ?: "",
     bidNtceNo = bidNtceNo,
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,
@@ -148,8 +151,9 @@ fun WatchedBidEntity.toSupabaseBidNotice(userId: String): SupabaseBidNotice {
     )
 }
 
-fun WatchedBid.toEntity(): WatchedBidEntity = WatchedBidEntity(
+fun WatchedBid.toEntity(userId: String): WatchedBidEntity = WatchedBidEntity(
     id = id,
+    userId = userId,
     bidNtceNo = bidNtceNo,
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,

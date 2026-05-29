@@ -3,8 +3,11 @@ package com.g2b.bidapp.di
 import android.util.Log
 import com.g2b.bidapp.BuildConfig
 import com.g2b.bidapp.data.remote.api.BidPublicInfoApi
+import com.g2b.bidapp.data.remote.api.ScsbidInfoApi
 import com.g2b.bidapp.data.remote.dto.BidItemsTypeAdapter
 import com.g2b.bidapp.data.remote.dto.BidNoticeItems
+import com.g2b.bidapp.data.remote.dto.BidResultItems
+import com.g2b.bidapp.data.remote.dto.BidResultItemsTypeAdapter
 import com.g2b.bidapp.data.remote.interceptor.AuthInterceptor
 import com.g2b.bidapp.data.remote.interceptor.RetryInterceptor
 import com.google.gson.Gson
@@ -67,7 +70,7 @@ private fun buildLoggingInterceptor(tag: String): HttpLoggingInterceptor =
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://apis.data.go.kr/1230000/ad/"
+    private const val BASE_URL = "https://apis.data.go.kr/1230000/"
     private const val CONNECT_TIMEOUT = 15L
     private const val READ_TIMEOUT = 30L
 
@@ -82,6 +85,7 @@ object NetworkModule {
         return GsonBuilder()
             .setLenient()
             .registerTypeAdapter(BidNoticeItems::class.java, BidItemsTypeAdapter())
+            .registerTypeAdapter(BidResultItems::class.java, BidResultItemsTypeAdapter())  // 추가
             .create()
     }
 
@@ -133,4 +137,9 @@ object NetworkModule {
     @Singleton
     fun provideBidPublicInfoApi(retrofit: Retrofit): BidPublicInfoApi =
         retrofit.create(BidPublicInfoApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideScsbidInfoApi(retrofit: Retrofit): ScsbidInfoApi =
+        retrofit.create(ScsbidInfoApi::class.java)
 }

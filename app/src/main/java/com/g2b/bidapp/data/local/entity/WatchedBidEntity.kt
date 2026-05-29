@@ -7,14 +7,14 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "watched_bids",
-    indices = [Index(value = ["bid_ntce_no"], unique = true)],
+    indices = [Index(value = ["user_id", "bid_ntce_no"], unique = true)],
 )
-
 data class WatchedBidEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
     val id: String,
 
+    @ColumnInfo(name = "user_id") val userId: String,
     @ColumnInfo(name = "bid_ntce_no") val bidNtceNo: String,
     @ColumnInfo(name = "bid_ntce_nm") val bidNtceNm: String,
     @ColumnInfo(name = "ntce_instt_nm") val ntceInsttNm: String?,

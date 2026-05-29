@@ -3,6 +3,7 @@ package com.g2b.bidapp.ui.bid.search
 import androidx.lifecycle.ViewModel
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.SearchParams
+import com.g2b.bidapp.util.toApiQueryDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,8 +16,8 @@ data class SearchUiState(
     val bidNtceNo: String = "",
     val dmInsttNm: String = "",
     val selectedCategory: BidCategory? = null,
-    val dateFrom: String = "",
-    val dateTo: String = "",
+    val fromDateMillis: Long? = null,
+    val toDateMillis: Long? = null,
 )
 
 val SearchUiState.toParams: SearchParams
@@ -25,8 +26,8 @@ val SearchUiState.toParams: SearchParams
         bidNtceNo = bidNtceNo.trim(),
         dmInsttNm = dmInsttNm.trim(),
         category = selectedCategory,
-        inqryBgnDt = dateFrom,
-        inqryEndDt = dateTo,
+        inqryBgnDt = fromDateMillis?.toApiQueryDate(endOfDay = false) ?: "",
+        inqryEndDt = toDateMillis?.toApiQueryDate(endOfDay = true) ?: "",
     )
 
 @HiltViewModel
@@ -39,10 +40,13 @@ class SearchViewModel @Inject constructor() : ViewModel() {
     fun onBidNtceNoChange(value: String) = _uiState.update { it.copy(bidNtceNo = value) }
     fun onDmInsttNmChange(value: String) = _uiState.update { it.copy(dmInsttNm = value) }
     fun onCategorySelect(category: BidCategory?) = _uiState.update { it.copy(selectedCategory = category) }
-    fun onDateFromChange(value: String) = _uiState.update { it.copy(dateFrom = value) }
-    fun onDateToChange(value: String) = _uiState.update { it.copy(dateTo = value) }
+
+    fun onDateRangeSelected(fromMillis: Long?, toMillis: Long?) {
+        _uiState.update { it.copy(fromDateMillis = fromMillis, toDateMillis = toMillis) }
+    }
 
     fun reset() {
         _uiState.value = SearchUiState()
     }
 }
+

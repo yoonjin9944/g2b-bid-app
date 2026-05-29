@@ -17,4 +17,7 @@ interface WatchlistRepository {
 
     // 앱 시작 시 Supabase → Room 단방향 diff 동기화
     suspend fun syncWithSupabase(): Result<Unit>
+
+    // 로그아웃 시 현재 사용자의 로컬 데이터 삭제
+    suspend fun clearLocalData(): Result<Unit>
 }

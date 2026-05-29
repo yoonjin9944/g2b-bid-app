@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.g2b.bidapp.R
 import com.g2b.bidapp.ui.theme.BorderGray
 import com.g2b.bidapp.ui.theme.ButtonTextDark
 import com.g2b.bidapp.ui.theme.G2bBidAppTheme
@@ -107,19 +110,11 @@ private fun LoginContent(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(color = NavyBlue, shape = RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "G2B",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                )
-            }
+            Image(
+                painter = painterResource(R.drawable.ic_logo),
+                contentDescription = "G2B 로고",
+                modifier = Modifier.size(80.dp)
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

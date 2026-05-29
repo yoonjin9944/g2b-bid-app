@@ -10,31 +10,32 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WatchedBidDao {
 
-    @Query("SELECT * FROM watched_bids ORDER BY watched_at DESC")
-    fun getAllFlow(): Flow<List<WatchedBidEntity>>
+    @Query("SELECT * FROM watched_bids WHERE user_id = :userId ORDER BY watched_at DESC")
+    fun getAllFlow(userId: String): Flow<List<WatchedBidEntity>>
 
-    @Query("SELECT * FROM watched_bids WHERE bid_ntce_nm LIKE '%' || :keyword || '%' ORDER BY watched_at DESC")
-    fun getByKeywordFlow(keyword: String): Flow<List<WatchedBidEntity>>
+    @Query("SELECT * FROM watched_bids WHERE user_id = :userId AND bid_ntce_nm LIKE '%' || :keyword || '%' ORDER BY watched_at DESC")
+    fun getByKeywordFlow(userId: String, keyword: String): Flow<List<WatchedBidEntity>>
 
-    @Query("SELECT bid_ntce_no FROM watched_bids")
-    suspend fun getAllBidNtceNos(): List<String>
+    @Query("SELECT bid_ntce_no FROM watched_bids WHERE user_id = :userId")
+    suspend fun getAllBidNtceNos(userId: String): List<String>
 
-    @Query("SELECT * FROM watched_bids WHERE bid_ntce_no = :bidNtceNo LIMIT 1")
-    suspend fun getByBidNtceNo(bidNtceNo: String): WatchedBidEntity?
+    @Query("SELECT * FROM watched_bids WHERE user_id = :userId AND bid_ntce_no = :bidNtceNo LIMIT 1")
+    suspend fun getByBidNtceNo(userId: String, bidNtceNo: String): WatchedBidEntity?
 
-    // PK 충돌 시 무시 (중복 등록 방지). 반환값: 삽입된 rowId, -1이면 무시됨
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertOrIgnore(entity: WatchedBidEntity): Long
 
-    // Supabase UUID로 교체할 때 사용 (syncWithSupabase 시 기존 row 삭제 후 재삽입)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: WatchedBidEntity): Long
 
-    @Query("DELETE FROM watched_bids WHERE bid_ntce_no = :bidNtceNo")
-    suspend fun deleteByBidNtceNo(bidNtceNo: String)
+    @Query("DELETE FROM watched_bids WHERE user_id = :userId AND bid_ntce_no = :bidNtceNo")
+    suspend fun deleteByBidNtceNo(userId: String, bidNtceNo: String)
 
     @Query("DELETE FROM watched_bids WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM watched_bids WHERE user_id = :userId")
+    suspend fun deleteAllByUserId(userId: String)
 
     @Query("UPDATE watched_bids SET synced_at = :syncedAt WHERE id = :id")
     suspend fun updateSyncedAt(id: String, syncedAt: Long)
@@ -42,9 +43,10 @@ interface WatchedBidDao {
     @Query("UPDATE watched_bids SET current_status = :newStatus, synced_at = :syncedAt WHERE id = :id")
     suspend fun updateStatus(id: String, newStatus: String, syncedAt: Long)
 
+    // Supabase Realtime 수신 시 사용 — Supabase RLS가 사용자별 이벤트를 보장하므로 userId 필터 생략
     @Query("UPDATE watched_bids SET current_status = :status WHERE bid_ntce_no = :bidNtceNo")
     suspend fun updateStatus(bidNtceNo: String, status: String)
 
-    @Query("SELECT * FROM watched_bids WHERE synced_at IS NULL")
-    suspend fun getUnsynced(): List<WatchedBidEntity>
+    @Query("SELECT * FROM watched_bids WHERE user_id = :userId AND synced_at IS NULL")
+    suspend fun getUnsynced(userId: String): List<WatchedBidEntity>
 }

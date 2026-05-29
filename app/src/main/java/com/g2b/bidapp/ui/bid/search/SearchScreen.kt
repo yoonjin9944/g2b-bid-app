@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Refresh
@@ -41,20 +44,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.SearchParams
+import com.g2b.bidapp.ui.components.CommonDateRangePicker
 import com.g2b.bidapp.ui.theme.BorderGray
 import com.g2b.bidapp.ui.theme.NavyBlue
+import com.g2b.bidapp.util.toDisplayDate
 
 private val categoryChips = listOf(
     null to "전체",
@@ -195,11 +205,10 @@ fun SearchScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF94A3B8)
                 )
-                DateRangeRow(
-                    dateFrom = state.dateFrom,
-                    dateTo = state.dateTo,
-                    onDateFromChange = viewModel::onDateFromChange,
-                    onDateToChange = viewModel::onDateToChange,
+                DateRangeSelector(
+                    fromDateMillis = state.fromDateMillis,
+                    toDateMillis = state.toDateMillis,
+                    onRangeSelected = viewModel::onDateRangeSelected
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -315,50 +324,72 @@ private fun CategoryChipGroup(
 }
 
 @Composable
-private fun DateRangeRow(
-    dateFrom: String,
-    dateTo: String,
-    onDateFromChange: (String) -> Unit,
-    onDateToChange: (String) -> Unit,
+private fun DateRangeSelector(
+    fromDateMillis: Long?,
+    toDateMillis: Long?,
+    onRangeSelected: (fromMillis: Long?, toMillis: Long?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = dateFrom,
-            onValueChange = onDateFromChange,
-            modifier = Modifier.weight(1f),
-            placeholder = {
-                Text("시작일 (yyyyMMddHHmm)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color(0xFFF8F9FF),
-                focusedContainerColor = Color(0xFFF8F9FF),
-                unfocusedBorderColor = BorderGray,
-                focusedBorderColor = NavyBlue,
-            ),
-        )
+    var showPicker by remember { mutableStateOf(false) }
 
-        Text("~", color = BorderGray)
+    val displayText = remember(fromDateMillis, toDateMillis) {
+        if (fromDateMillis == null) ""
+        else {
+            val from = fromDateMillis.toDisplayDate()
+            val to = toDateMillis?.toDisplayDate() ?: "?"
+            "$from ~ $to"
+        }
+    }
 
-        OutlinedTextField(
-            value = dateTo,
-            onValueChange = onDateToChange,
-            modifier = Modifier.weight(1f),
-            placeholder = {
-                Text("종료일 (yyyyMMddHHmm)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color(0xFFF8F9FF),
-                focusedContainerColor = Color(0xFFF8F9FF),
-                unfocusedBorderColor = BorderGray,
-                focusedBorderColor = NavyBlue,
-            ),
+    OutlinedTextField(
+        value = displayText,
+        onValueChange = {},
+        modifier = modifier.fillMaxWidth(),
+        readOnly = true,
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = "날짜선택",
+                tint = Color(0xFF94A3B8)
+            )
+        },
+        placeholder = { Text("날짜를 선택하세요", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8)) },
+        singleLine = true,
+        shape = RoundedCornerShape(8.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = Color(0xFFF8F9FF),
+            focusedContainerColor = Color(0xFFF8F9FF),
+            unfocusedBorderColor = BorderGray,
+            focusedBorderColor = NavyBlue,
+            disabledBorderColor = BorderGray,
+            disabledContainerColor = Color(0xFFF8F9FF),
+            disabledTextColor = Color(0xFF94A3B8),
+        ),
+        interactionSource = remember { MutableInteractionSource() }.also { source ->
+            LaunchedEffect(source) {
+                source.interactions.collect { interaction ->
+                    if (interaction is PressInteraction.Release) showPicker = true
+                }
+            }
+        },
+    )
+
+    if (showPicker) {
+        CommonDateRangePicker(
+            initialStartDateMillis = fromDateMillis,
+            initialEndDateMillis = toDateMillis,
+            onRangeSelected = { from, to -> onRangeSelected(from, to) },
+            onDismiss = { showPicker = false },
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun SearchScreenPreview() {
+    SearchScreen(
+        onNavigateBack = {},
+        onSearch = {},
+    )
+}
+

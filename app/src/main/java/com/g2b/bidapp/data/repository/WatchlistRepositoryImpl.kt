@@ -38,25 +38,27 @@ class WatchlistRepositoryImpl @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : WatchlistRepository {
 
+    private fun currentUserId(): String = auth.currentUserOrNull()?.id ?: ""
+
     override fun getWatchlistFlow(): Flow<List<WatchedBid>> =
-        watchedBidDao.getAllFlow().map { entities -> entities.map { it.toModel() } }
+        watchedBidDao.getAllFlow(currentUserId()).map { entities -> entities.map { it.toModel() } }
 
     override fun getWatchlistByKeywordFlow(keyword: String): Flow<List<WatchedBid>> =
-        watchedBidDao.getByKeywordFlow(keyword).map { entities -> entities.map { it.toModel() } }
+        watchedBidDao.getByKeywordFlow(currentUserId(), keyword).map { entities -> entities.map { it.toModel() } }
 
     override suspend fun getWatchedBidNos(): Set<String> =
-        withContext(ioDispatcher) { watchedBidDao.getAllBidNtceNos().toSet() }
+        withContext(ioDispatcher) { watchedBidDao.getAllBidNtceNos(currentUserId()).toSet() }
 
     override suspend fun isWatched(bidNtceNo: String): Boolean =
-        withContext(ioDispatcher) { watchedBidDao.getByBidNtceNo(bidNtceNo) != null }
+        withContext(ioDispatcher) { watchedBidDao.getByBidNtceNo(currentUserId(), bidNtceNo) != null }
 
     // 등록: Room INSERT 선행 → Supabase upsert
     override suspend fun addToWatchlist(notice: BidNotice): Result<Unit> = runCatching {
         withContext(ioDispatcher) {
-            val entity = notice.toWatchedBidEntity()
+            val userId = auth.currentUserOrNull()?.id ?: error("로그인이 필요합니다")
+            val entity = notice.toWatchedBidEntity(userId)
             watchedBidDao.insertOrIgnore(entity)
 
-            val userId = auth.currentUserOrNull()?.id ?: return@withContext
             runCatching {
                 postgrest.from("bid_notices")
                     .upsert(notice.toSupabaseBidNotice(userId)) {
@@ -84,17 +86,17 @@ class WatchlistRepositoryImpl @Inject constructor(
                 }
             }
             // Supabase 결과 무관하게 Room에서 삭제 (SSOT: Room)
-            watchedBidDao.deleteByBidNtceNo(bidNtceNo)
+            watchedBidDao.deleteByBidNtceNo(userId ?: "", bidNtceNo)
         }
     }
 
     // Snackbar 실행취소 시 WatchedBid를 Room에 재삽입 + Supabase upsert 시도
     override suspend fun restoreWatchedBid(bid: WatchedBid): Result<Unit> = runCatching {
         withContext(ioDispatcher) {
-            val entity = bid.toEntity()
+            val userId = auth.currentUserOrNull()?.id ?: error("로그인이 필요합니다")
+            val entity = bid.toEntity(userId)
             watchedBidDao.insertOrIgnore(entity)
 
-            val userId = auth.currentUserOrNull()?.id ?: return@withContext
             runCatching {
                 val supabaseDto = SupabaseBidNotice(
                     userId = userId,
@@ -129,14 +131,14 @@ class WatchlistRepositoryImpl @Inject constructor(
                 .select { filter { eq("user_id", userId) } }
                 .decodeList<SupabaseBidNotice>()
 
-            val localNos = watchedBidDao.getAllBidNtceNos().toSet()
+            val localNos = watchedBidDao.getAllBidNtceNos(userId).toSet()
 
             remoteList
                 .filter { it.bidNtceNo !in localNos }
                 .forEach { dto -> watchedBidDao.insertOrIgnore(dto.toWatchedBidEntity()) }
 
             // Room-only(syncedAt = null) 항목을 WorkManager 재시도 큐에 등록
-            val hasUnsynced = watchedBidDao.getUnsynced().isNotEmpty()
+            val hasUnsynced = watchedBidDao.getUnsynced(userId).isNotEmpty()
             if (hasUnsynced) {
                 WorkManager.getInstance(context).enqueueUniqueWork(
                     "watchlist_sync",
@@ -151,6 +153,14 @@ class WatchlistRepositoryImpl @Inject constructor(
                         .build()
                 )
             }
+        }
+    }
+
+    // 로그아웃 시 현재 사용자의 로컬 데이터 삭제
+    override suspend fun clearLocalData(): Result<Unit> = runCatching {
+        withContext(ioDispatcher) {
+            val userId = auth.currentUserOrNull()?.id ?: return@withContext
+            watchedBidDao.deleteAllByUserId(userId)
         }
     }
 }

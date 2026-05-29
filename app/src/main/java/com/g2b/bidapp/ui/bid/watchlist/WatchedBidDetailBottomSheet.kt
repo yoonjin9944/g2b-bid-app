@@ -45,15 +45,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import com.g2b.bidapp.data.mapper.toPriceLabel
 import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.ui.components.BidStatusBadge
 import com.g2b.bidapp.ui.theme.NavyBlue
-import java.text.SimpleDateFormat
-import java.util.*
-
-private val displayFormat = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.KOREA)
+import com.g2b.bidapp.util.toDisplayDateTime
+import com.g2b.bidapp.util.toPriceLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,10 +113,10 @@ fun WatchedBidDetailBottomSheet(
                 }
 
                 DetailSection(title = "공고 일정") {
-                    DetailRow("공고일시", bid.bidNtceDt?.let { displayFormat.format(Date(it)) } ?: "-")
-                    DetailRow("마감일시", bid.bidClseDt?.let { displayFormat.format(Date(it)) } ?: "-")
-                    DetailRow("개찰일시", bid.opengDt?.let { displayFormat.format(Date(it)) } ?: "-")
-                    DetailRow("관심등록일", displayFormat.format(Date(bid.watchedAt)))
+                    DetailRow("공고일시", bid.bidNtceDt.toDisplayDateTime())
+                    DetailRow("마감일시", bid.bidClseDt.toDisplayDateTime())
+                    DetailRow("개찰일시", bid.opengDt.toDisplayDateTime())
+                    DetailRow("관심등록일", bid.watchedAt.toDisplayDateTime())
                 }
 
                 DetailSection(title = "금액 정보") {

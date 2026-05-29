@@ -49,15 +49,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.g2b.bidapp.data.mapper.toPriceLabel
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.ui.theme.NavyBlue
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-
-private val DtFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-private val DtFormatterShort = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
-private val DisplayFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")
+import com.g2b.bidapp.util.toDisplayDateTime
+import com.g2b.bidapp.util.toPriceLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,9 +112,9 @@ fun BidDetailBottomSheet(
                 }
 
                 DetailSection(title = "공고 일정") {
-                    DetailRow("공고일시", notice.bidNtceDt?.toDisplayDate() ?: "-")
-                    DetailRow("마감일시", notice.bidClseDt?.toDisplayDate() ?: "-")
-                    DetailRow("개찰일시", notice.opengDt?.toDisplayDate() ?: "-")
+                    DetailRow("공고일시", notice.bidNtceDt?.toDisplayDateTime() ?: "-")
+                    DetailRow("마감일시", notice.bidClseDt?.toDisplayDateTime() ?: "-")
+                    DetailRow("개찰일시", notice.opengDt?.toDisplayDateTime() ?: "-")
                 }
 
                 DetailSection(title = "금액 정보") {
@@ -269,10 +264,3 @@ private fun Context.openUrl(url: String) {
     }
 }
 
-private fun String.toDisplayDate(): String = try {
-    val formatter = if (length >= 14) DtFormatter else DtFormatterShort
-    val chars = if (length >= 14) 14 else 12
-    LocalDateTime.parse(take(chars), formatter).format(DisplayFormatter)
-} catch (_: Exception) {
-    this
-}

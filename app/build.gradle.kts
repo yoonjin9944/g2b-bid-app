@@ -16,7 +16,7 @@ val localProps = Properties().apply {
     if (file.exists()) load(file.inputStream())
 }
 
-val kakaoNativeKey = localProps.getProperty("KAKAO_NATIVE_APP_KEY")
+val kakaoNativeKey = localProps.getProperty("KAKAO_NATIVE_APP_KEY") ?: ""
 
 android {
     namespace = "com.g2b.bidapp"
@@ -81,6 +81,7 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.lifecycle.service)
+    implementation(libs.androidx.hilt.common)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
     implementation(libs.kakao.all)
 

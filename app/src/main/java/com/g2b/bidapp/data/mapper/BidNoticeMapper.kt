@@ -19,14 +19,3 @@ fun BidNoticeDto.toModel(category: BidCategory): BidNotice = BidNotice(
     bidNtceDtlUrl = bidNtceDtlUrl,
 )
 
-fun Long.toPriceLabel(): String {
-    if (this <= 0L) return "-"
-    val uk = this / 100_000_000L
-    val man = (this % 100_000_000L) / 10_000L
-    return buildString {
-        if (uk > 0) append("${uk}억 ")
-        if (man > 0) append("${man}만")
-        if (uk == 0L && man == 0L) append("${this@toPriceLabel}원")
-        else append("원")
-    }.trim()
-}

@@ -28,7 +28,7 @@ class WatchedBidMapperTest {
 
     @Test
     fun `BidNotice를 WatchedBidEntity로 변환한다`() {
-        val entity = sampleNotice.toWatchedBidEntity()
+        val entity = sampleNotice.toWatchedBidEntity(userId = "test-user-id")
 
         assertEquals(sampleNotice.bidNtceNo, entity.bidNtceNo)
         assertEquals(sampleNotice.bidNtceNm, entity.bidNtceNm)
@@ -52,6 +52,7 @@ class WatchedBidMapperTest {
     fun `WatchedBidEntity를 WatchedBid domain 모델로 변환한다`() {
         val entity = WatchedBidEntity(
             id = "uuid-1",
+            userId = "test-user-id",
             bidNtceNo = "20240101001",
             bidNtceNm = "테스트 공고",
             ntceInsttNm = "테스트 기관",
@@ -81,6 +82,7 @@ class WatchedBidMapperTest {
     fun `알 수 없는 currentStatus는 REGISTERED로 폴백된다`() {
         val entity = WatchedBidEntity(
             id = "uuid-1",
+            userId = "test-user-id",
             bidNtceNo = "001",
             bidNtceNm = "공고",
             ntceInsttNm = null,

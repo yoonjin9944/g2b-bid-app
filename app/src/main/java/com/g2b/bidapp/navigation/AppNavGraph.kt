@@ -30,6 +30,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.g2b.bidapp.ui.bid.list.BidListScreen
+import com.g2b.bidapp.ui.bid.result.BidResultListScreen
 import com.g2b.bidapp.ui.bid.search.SearchScreen
 import com.g2b.bidapp.ui.bid.search.SearchSharedViewModel
 import com.g2b.bidapp.ui.bid.watchlist.WatchlistScreen
@@ -168,7 +169,10 @@ fun AppNavGraph(
                 WatchlistScreen()
             }
 
-            composable(Screen.BidResult.route) { }
+            composable(Screen.BidResult.route) {
+                BidResultListScreen()
+            }
+
             composable(Screen.Notifications.route) {
                 NotificationListScreen()
             }

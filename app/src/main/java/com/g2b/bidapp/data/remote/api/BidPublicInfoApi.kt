@@ -6,7 +6,7 @@ import retrofit2.http.Query
 
 interface BidPublicInfoApi {
 
-    @GET("BidPublicInfoService/getBidPblancListInfoCnstwkPPSSrch")
+    @GET("ad/BidPublicInfoService/getBidPblancListInfoCnstwkPPSSrch")
     suspend fun getCnstwkList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,
@@ -18,7 +18,7 @@ interface BidPublicInfoApi {
         @Query("inqryEndDt") inqryEndDt: String? = null,
     ): BidNoticeListResponse
 
-    @GET("BidPublicInfoService/getBidPblancListInfoServcPPSSrch")
+    @GET("ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch")
     suspend fun getServcList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,
@@ -30,7 +30,7 @@ interface BidPublicInfoApi {
         @Query("inqryEndDt") inqryEndDt: String? = null,
     ): BidNoticeListResponse
 
-    @GET("BidPublicInfoService/getBidPblancListInfoThngPPSSrch")
+    @GET("ad/BidPublicInfoService/getBidPblancListInfoThngPPSSrch")
     suspend fun getThngList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,

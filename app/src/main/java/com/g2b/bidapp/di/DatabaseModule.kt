@@ -29,6 +29,7 @@ object DatabaseModule {
             G2bDatabase::class.java,
             DB_NAME,
         )
+            .addMigrations(G2bDatabase.MIGRATION_2_3)
             .fallbackToDestructiveMigration(dropAllTables = false)
             .build()
 

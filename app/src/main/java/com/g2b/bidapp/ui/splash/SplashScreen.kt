@@ -1,5 +1,6 @@
 package com.g2b.bidapp.ui.splash
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,12 +27,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.g2b.bidapp.ui.theme.NavyBlue
@@ -98,12 +101,10 @@ private fun SplashBackground(showSpinner: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
-            // TODO: 실제 앱 로고 리소스 교체
-            Text(
-                text = "G2B",
-                color = Color.White,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
+            Image(
+                painter = painterResource(id = com.g2b.bidapp.R.drawable.ic_logo),
+                contentDescription = "G2B 앱 로고",
+                modifier = Modifier.size(120.dp)
             )
             Text(
                 text = "입찰공고 모니터링",

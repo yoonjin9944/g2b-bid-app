@@ -7,8 +7,13 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.User
+import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.domain.repository.AuthRepository
+import com.g2b.bidapp.domain.repository.WatchlistRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +39,7 @@ data class SettingsUiState(
 @HiltViewModel
 open class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val watchlistRepository: WatchlistRepository,
     private val dataStore: DataStore<Preferences>,
 ) : ViewModel() {
 
@@ -69,6 +75,7 @@ open class SettingsViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            watchlistRepository.clearLocalData()
             authRepository.signOut()
             _uiState.update { it.copy(isLoggedOut = true, isLoading = false) }
         }
@@ -87,6 +94,17 @@ open class SettingsViewModel @Inject constructor(
                 override suspend fun signOut() = Result.success(Unit)
                 override suspend fun upsertFcmToken(userId: String, fcmToken: String) = Result.success(Unit)
                 override suspend fun signInWithKakao() = Result.success(Unit)
+            },
+            watchlistRepository = object : WatchlistRepository {
+                override fun getWatchlistFlow(): Flow<List<WatchedBid>> = emptyFlow()
+                override fun getWatchlistByKeywordFlow(keyword: String): Flow<List<WatchedBid>> = emptyFlow()
+                override suspend fun getWatchedBidNos(): Set<String> = emptySet()
+                override suspend fun isWatched(bidNtceNo: String) = false
+                override suspend fun addToWatchlist(notice: BidNotice) = Result.success(Unit)
+                override suspend fun removeFromWatchlist(bidNtceNo: String) = Result.success(Unit)
+                override suspend fun restoreWatchedBid(bid: WatchedBid) = Result.success(Unit)
+                override suspend fun syncWithSupabase() = Result.success(Unit)
+                override suspend fun clearLocalData() = Result.success(Unit)
             },
             dataStore = androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(
                 produceFile = { java.io.File(System.getProperty("java.io.tmpdir"), "preview_settings.preferences_pb") }
