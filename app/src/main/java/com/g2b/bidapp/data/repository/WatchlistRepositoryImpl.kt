@@ -98,20 +98,7 @@ class WatchlistRepositoryImpl @Inject constructor(
             watchedBidDao.insertOrIgnore(entity)
 
             runCatching {
-                val supabaseDto = SupabaseBidNotice(
-                    userId = userId,
-                    bidNtceNo = bid.bidNtceNo,
-                    bidNtceNm = bid.bidNtceNm,
-                    ntceInsttNm = bid.ntceInsttNm,
-                    dmInsttNm = bid.dmInsttNm,
-                    bidNtceDt = null,
-                    bidClseDt = null,
-                    opengDt = null,
-                    presmptPrce = bid.presmptPrce,
-                    bdgtAmt = bid.bdgtAmt,
-                    bidCategory = bid.bidCategory.apiCode,
-                    bidNtceDtlUrl = bid.bidNtceDtlUrl,
-                )
+                val supabaseDto = entity.toSupabaseBidNotice(userId)
                 postgrest.from("bid_notices")
                     .upsert(supabaseDto) {
                         onConflict = "user_id,bid_ntce_no"

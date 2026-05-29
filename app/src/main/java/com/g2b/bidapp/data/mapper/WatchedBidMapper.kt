@@ -6,47 +6,13 @@ import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.domain.model.WatchedBid
+import com.g2b.bidapp.util.parseIsoToMillis
+import com.g2b.bidapp.util.toG2bIso8601
+import com.g2b.bidapp.util.toG2bMillis
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
-
-private val G2B_LONG = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-private val G2B_SHORT = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
-
-private fun String?.g2bToMillis(): Long? = this?.let { raw ->
-    try {
-        val fmt = if (raw.length >= 14) G2B_LONG else G2B_SHORT
-        val chars = if (raw.length >= 14) 14 else 12
-        LocalDateTime.parse(raw.take(chars), fmt)
-            .atOffset(ZoneOffset.ofHours(9))
-            .toInstant()
-            .toEpochMilli()
-    } catch (_: Exception) {
-        null
-    }
-}
-
-private fun String?.g2bToIso8601(): String? = this?.let { raw ->
-    try {
-        val fmt = if (raw.length >= 14) G2B_LONG else G2B_SHORT
-        val chars = if (raw.length >= 14) 14 else 12
-        LocalDateTime.parse(raw.take(chars), fmt)
-            .atOffset(ZoneOffset.ofHours(9))
-            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-    } catch (_: Exception) {
-        null
-    }
-}
-
-private fun String?.isoToMillis(): Long? = this?.let {
-    try {
-        Instant.parse(it).toEpochMilli()
-    } catch (_: Exception) {
-        null
-    }
-}
 
 fun BidNotice.toWatchedBidEntity(
     userId: String,
@@ -59,9 +25,9 @@ fun BidNotice.toWatchedBidEntity(
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,
     dmInsttNm = dmInsttNm,
-    bidNtceDt = bidNtceDt.g2bToMillis(),
-    bidClseDt = bidClseDt.g2bToMillis(),
-    opengDt = opengDt.g2bToMillis(),
+    bidNtceDt = bidNtceDt.toG2bMillis(),
+    bidClseDt = bidClseDt.toG2bMillis(),
+    opengDt = opengDt.toG2bMillis(),
     presmptPrce = presmptPrce,
     bdgtAmt = bdgtAmt,
     bidCategory = bidCategory.apiCode,
@@ -77,9 +43,9 @@ fun BidNotice.toSupabaseBidNotice(userId: String): SupabaseBidNotice = SupabaseB
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,
     dmInsttNm = dmInsttNm,
-    bidNtceDt = bidNtceDt.g2bToIso8601(),
-    bidClseDt = bidClseDt.g2bToIso8601(),
-    opengDt = opengDt.g2bToIso8601(),
+    bidNtceDt = bidNtceDt.toG2bIso8601(),
+    bidClseDt = bidClseDt.toG2bIso8601(),
+    opengDt = opengDt.toG2bIso8601(),
     presmptPrce = presmptPrce,
     bdgtAmt = bdgtAmt,
     bidCategory = bidCategory.apiCode,
@@ -114,15 +80,15 @@ fun SupabaseBidNotice.toWatchedBidEntity(
     bidNtceNm = bidNtceNm,
     ntceInsttNm = ntceInsttNm,
     dmInsttNm = dmInsttNm,
-    bidNtceDt = bidNtceDt.isoToMillis(),
-    bidClseDt = bidClseDt.isoToMillis(),
-    opengDt = opengDt.isoToMillis(),
+    bidNtceDt = bidNtceDt.parseIsoToMillis(),
+    bidClseDt = bidClseDt.parseIsoToMillis(),
+    opengDt = opengDt.parseIsoToMillis(),
     presmptPrce = presmptPrce,
     bdgtAmt = bdgtAmt,
     bidCategory = bidCategory,
     currentStatus = currentStatus,
     bidNtceDtlUrl = bidNtceDtlUrl,
-    watchedAt = watchedAt.isoToMillis() ?: syncedAt,
+    watchedAt = watchedAt.parseIsoToMillis() ?: syncedAt,
     syncedAt = syncedAt,
 )
 

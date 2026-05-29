@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +40,7 @@ import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.ui.components.BidStatusBadge
 import com.g2b.bidapp.ui.theme.BidNoticeColor
+import com.g2b.bidapp.ui.theme.NavyBlue
 import com.g2b.bidapp.ui.theme.StatusCancelled
 import com.g2b.bidapp.util.toDisplayDateTime
 import com.g2b.bidapp.util.toPriceLabel
@@ -113,24 +116,28 @@ fun WatchedBidCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    // 라이프사이클 진행상태 배지 (투찰중/마감임박/개찰 대기/개찰)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     LifecycleStageBadge(stage = stage)
-
-                    // 상태 변경 배지 — REGISTERED가 아닐 때만 표시 (변경/취소/재공고/개찰 알림용)
                     if (bid.currentStatus != BidStatus.REGISTERED) {
+                        Spacer(Modifier.width(6.dp))
                         BidStatusBadge(status = bid.currentStatus)
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "공고번호: ${bid.bidNtceNo}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF737780),
+                        maxLines = 1,
+                    )
                 }
-                Text(
-                    text = "공고번호: ${bid.bidNtceNo}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF737780),
-                    maxLines = 1,
-                )
+                IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Bookmark,
+                        contentDescription = "관심공고",
+                        tint = NavyBlue,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
 
             Spacer(Modifier.height(4.dp))
@@ -145,6 +152,7 @@ fun WatchedBidCard(
                 color = Color(0xFF0B1C30),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 8.dp),
             )
 
             Spacer(Modifier.height(8.dp))

@@ -49,7 +49,7 @@ private data class BottomNavItem(
 private val bottomNavItems = listOf(
     BottomNavItem(Screen.BidList.createRoute(), "입찰공고", Icons.Outlined.Description),
     BottomNavItem(Screen.Watchlist.route, "관심공고", Icons.Outlined.Favorite),
-    BottomNavItem(Screen.BidResult.route, "낙찰결과", Icons.Outlined.EmojiEvents),
+//    BottomNavItem(Screen.BidResult.route, "낙찰결과", Icons.Outlined.EmojiEvents),
     BottomNavItem(Screen.Notifications.route, "알림", Icons.Outlined.Notifications),
     BottomNavItem(Screen.Settings.route, "설정", Icons.Outlined.Settings),
 )
