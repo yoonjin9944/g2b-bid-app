@@ -16,11 +16,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: scripts/package.json
+
+      - name: Debug - list scripts dir
+        run: ls -la scripts/
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
         working-directory: scripts
 
       - name: Poll bid statuss
