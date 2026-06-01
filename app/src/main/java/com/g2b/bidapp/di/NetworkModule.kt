@@ -1,8 +1,18 @@
 package com.g2b.bidapp.di
 
+import android.util.Log
 import com.g2b.bidapp.BuildConfig
+import com.g2b.bidapp.data.remote.api.BidPublicInfoApi
+import com.g2b.bidapp.data.remote.api.ScsbidInfoApi
+import com.g2b.bidapp.data.remote.dto.BidItemsTypeAdapter
+import com.g2b.bidapp.data.remote.dto.BidNoticeItems
+import com.g2b.bidapp.data.remote.dto.BidResultItems
+import com.g2b.bidapp.data.remote.dto.BidResultItemsTypeAdapter
+import com.g2b.bidapp.data.remote.interceptor.AuthInterceptor
+import com.g2b.bidapp.data.remote.interceptor.RetryInterceptor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,7 +22,49 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.*
+import javax.inject.Named
 import javax.inject.Singleton
+
+private const val HTTP_ERROR_CODE_MIN = 400
+private const val HTTP_ERROR_CODE_MAX = 599
+
+private val prettyGson = GsonBuilder().setPrettyPrinting().create()
+
+private fun buildLoggingInterceptor(tag: String): HttpLoggingInterceptor =
+    HttpLoggingInterceptor { message ->
+        if (!BuildConfig.DEBUG) return@HttpLoggingInterceptor
+        when {
+            message.startsWith("-->") -> {
+                Log.d(tag, "┌──────────────────────────── [$tag] ───")
+                Log.d(tag, "│ ▶ ${message.removePrefix("--> ")}")
+            }
+
+            message.startsWith("--> END") -> Log.d(tag, "├─────────────────────────────────────────────")
+            message.startsWith("<--") -> {
+                val code = message.substringAfter("<--").take(3).toIntOrNull() ?: 0
+                val logFn: (String, String) -> Unit =
+                    if (code in HTTP_ERROR_CODE_MIN..HTTP_ERROR_CODE_MAX) Log::w else Log::d
+                logFn(tag, "│ ◀ ${message.removePrefix("<-- ")}")
+            }
+
+            message.startsWith("<-- END") -> Log.d(tag, "└─────────────────────────────────────────────")
+            message.startsWith("{") || message.startsWith("[") -> {
+                try {
+                    prettyGson
+                        .toJson(JsonParser.parseString(message))
+                        .lines()
+                        .forEach { Log.d(tag, "│   $it") }
+                } catch (e: Exception) {
+                    Log.d(tag, "│   $message")
+                    Log.d(tag, "│   $e")
+                }
+            }
+
+            message.isNotBlank() -> Log.d(tag, "│   $message")
+        }
+    }.apply {
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+    }
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -24,7 +76,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGson(): Gson = GsonBuilder().setLenient().create()
+    @Named("serviceKey")
+    fun provideServiceKey(): String = BuildConfig.GOGOV_API_KEY
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return GsonBuilder()
+            .setLenient()
+            .registerTypeAdapter(BidNoticeItems::class.java, BidItemsTypeAdapter())
+            .registerTypeAdapter(BidResultItems::class.java, BidResultItemsTypeAdapter())  // 추가
+            .create()
+    }
 
     @Provides
     @Singleton
@@ -38,26 +101,45 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
-    ): OkHttpClient =
-        OkHttpClient.Builder()
-            .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
-            .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
-            .addNetworkInterceptor(loggingInterceptor)
-            .build()
+    fun provideAuthInterceptor(
+        @Named("serviceKey") serviceKey: String,
+    ): AuthInterceptor = AuthInterceptor(serviceKey)
 
     @Provides
     @Singleton
-    fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        gson: Gson
-    ): Retrofit =
+    fun provideRetryInterceptor(): RetryInterceptor = RetryInterceptor()
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        retryInterceptor: RetryInterceptor,
+        loggingInterceptor: HttpLoggingInterceptor,
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(buildLoggingInterceptor("HTTP_BID"))
+        .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
+        .addInterceptor(authInterceptor)
+        .addInterceptor(retryInterceptor)
+        .addNetworkInterceptor(loggingInterceptor)
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit =
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
 
+    @Provides
+    @Singleton
+    fun provideBidPublicInfoApi(retrofit: Retrofit): BidPublicInfoApi =
+        retrofit.create(BidPublicInfoApi::class.java)
 
+    @Provides
+    @Singleton
+    fun provideScsbidInfoApi(retrofit: Retrofit): ScsbidInfoApi =
+        retrofit.create(ScsbidInfoApi::class.java)
 }

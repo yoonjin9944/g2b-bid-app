@@ -3,6 +3,11 @@
 agp                     = "8.9.2"
 kotlin                  = "2.1.20"
 ksp                     = "2.1.20-1.0.31"
+googleid                = "1.1.1"
+firebaseMessaging       = "24.1.1"
+coroutinesPlayServices  = "1.9.0"
+browser                 = "1.8.0"
+kakao                   = "2.20.6"
 
 # ── AndroidX Core ────────────────────────────────────────────────────────────
 coreKtx                 = "1.16.0"
@@ -50,8 +55,7 @@ kotlinxSerialization    = "1.8.1"
 splashScreen            = "1.0.1"
 
 # ── Credential Manager (Google Sign-In) ─────────────────────────────────────
-credentialManager       = "1.5.0"
-googleIdentity          = "1.1.1"
+credentialManager       = "1.6.0"
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 lifecycleViewModelCompose = "2.9.0"
@@ -62,7 +66,7 @@ junitExt                = "1.2.1"
 espressoCore            = "3.6.1"
 coroutinesTest          = "1.10.2"
 mockk                   = "1.13.17"
-turbine                 = "1.2.0"
+turbine                 = "1.2.1"
 mockwebserver           = "4.12.0"
 archCoreTesting         = "2.2.0"
 pagingTesting           = "3.3.6"
@@ -71,12 +75,18 @@ composeUiTestJunit4     = "1.8.1"
 
 # ── Security ─────────────────────────────────────────────────────────────────
 securityCrypto          = "1.1.0-alpha06"
+lifecycleService        = "2.10.0"
+datastore               = "1.1.1"
+hiltWork                = "1.2.0"
+hiltCommon = "1.3.0"
 
 [libraries]
 # ── AndroidX Core ────────────────────────────────────────────────────────────
 androidx-core-ktx               = { group = "androidx.core",               name = "core-ktx",                          version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx  = { group = "androidx.lifecycle",          name = "lifecycle-runtime-ktx",             version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose       = { group = "androidx.activity",           name = "activity-compose",                  version.ref = "activityCompose" }
+androidx-browser                = { group = "androidx.browser",            name = "browser",                           version.ref = "browser" }
+kakao-all                       = { group = "com.kakao.sdk",               name = "v2-all",                            version.ref = "kakao" }
 
 # ── Compose BOM ──────────────────────────────────────────────────────────────
 androidx-compose-bom             = { group = "androidx.compose",           name = "compose-bom",                       version.ref = "composeBom" }
@@ -131,13 +141,14 @@ paging-compose                  = { group = "androidx.paging",             name 
 
 # ── Coroutines ───────────────────────────────────────────────────────────────
 kotlinx-coroutines-android      = { group = "org.jetbrains.kotlinx",       name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
+coroutines-play-services        = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
 
 # ── Kotlin Serialization ─────────────────────────────────────────────────────
 kotlinx-serialization-json      = { group = "org.jetbrains.kotlinx",       name = "kotlinx-serialization-json",        version.ref = "kotlinxSerialization" }
 
 # ── Firebase ─────────────────────────────────────────────────────────────────
 firebase-bom                    = { group = "com.google.firebase",         name = "firebase-bom",                      version.ref = "firebaseBom" }
-firebase-messaging              = { group = "com.google.firebase",         name = "firebase-messaging-ktx" }
+firebase-messaging              = { module = "com.google.firebase:firebase-messaging-ktx", version.ref = "firebaseMessaging" }
 firebase-analytics              = { group = "com.google.firebase",         name = "firebase-analytics-ktx" }
 
 # ── WorkManager ──────────────────────────────────────────────────────────────
@@ -149,10 +160,13 @@ splash-screen                   = { group = "androidx.core",               name 
 # ── Credential Manager ───────────────────────────────────────────────────────
 credentials                     = { group = "androidx.credentials",        name = "credentials",                       version.ref = "credentialManager" }
 credentials-play-services-auth  = { group = "androidx.credentials",        name = "credentials-play-services-auth",    version.ref = "credentialManager" }
-google-identity                 = { group = "com.google.android.libraries.identity.googleid", name = "googleid",       version.ref = "googleIdentity" }
+googleid                        = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 
 # ── Security ─────────────────────────────────────────────────────────────────
 security-crypto                 = { group = "androidx.security",           name = "security-crypto",                   version.ref = "securityCrypto" }
+datastore-preferences           = { group = "androidx.datastore",           name = "datastore-preferences",             version.ref = "datastore" }
+hilt-work                       = { group = "androidx.hilt",                name = "hilt-work",                         version.ref = "hiltWork" }
+androidx-hilt-compiler          = { group = "androidx.hilt",                name = "hilt-compiler",                     version.ref = "hiltWork" }
 
 # ── Test ─────────────────────────────────────────────────────────────────────
 junit                           = { group = "junit",                       name = "junit",                             version.ref = "junit" }
@@ -165,6 +179,8 @@ mockwebserver                   = { group = "com.squareup.okhttp3",        name 
 arch-core-testing               = { group = "androidx.arch.core",          name = "core-testing",                      version.ref = "archCoreTesting" }
 paging-testing                  = { group = "androidx.paging",             name = "paging-testing",                    version.ref = "pagingTesting" }
 hilt-android-testing            = { group = "com.google.dagger",           name = "hilt-android-testing",              version.ref = "hiltTesting" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
+androidx-hilt-common = { group = "androidx.hilt", name = "hilt-common", version.ref = "hiltCommon" }
 
 [plugins]
 android-application             = { id = "com.android.application",                    version.ref = "agp" }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  위치: app/src/main/res/xml/file_provider_paths.xml
+  external-files-path → getExternalFilesDir(DIRECTORY_DOWNLOADS) 에 해당
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-files-path
+        name="apk_downloads"
+        path="Downloads/" />
+    <!-- getExternalFilesDir 이 null 일 때 내부 저장소 폴백 -->
+    <files-path
+        name="apk_downloads_internal"
+        path="." />
+</paths>

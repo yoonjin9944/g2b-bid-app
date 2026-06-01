@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("kotlin-parcelize")
     alias(libs.plugins.google.services)
 }
 
@@ -14,6 +15,8 @@ val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) load(file.inputStream())
 }
+
+val kakaoNativeKey = localProps.getProperty("KAKAO_NATIVE_APP_KEY") ?: ""
 
 android {
     namespace = "com.g2b.bidapp"
@@ -29,9 +32,14 @@ android {
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "com.g2b.bidapp.HiltTestRunner"
 
-//        buildConfigField("String", "VERSION_NAME", "\"1.0.0\"")
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anon.key", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_CLIENT_ID", "")}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"")
+        buildConfigField("String", "GOGOV_API_KEY", "\"${localProps.getProperty("GOGOV_API_KEY", "")}\"")
+        buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${localProps.getProperty("KAKAO_NATIVE_APP_KEY", "")}\"")
+        buildConfigField("String", "KAKAO_ADMIN_KEY", "\"${localProps.getProperty("KAKAO_ADMIN_KEY", "")}\"")
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoNativeKey
     }
 
     buildTypes {
@@ -47,6 +55,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -70,11 +80,22 @@ ksp {
 }
 
 dependencies {
+    implementation(libs.androidx.lifecycle.service)
+    implementation(libs.androidx.hilt.common)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+    implementation(libs.kakao.all)
+
     // ── AndroidX Core ────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.browser)
     implementation(libs.splash.screen)
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.firebase.messaging)
+    implementation(libs.coroutines.play.services)
 
     // ── Compose BOM ──────────────────────────────────────────────────────────
     val composeBom = platform(libs.androidx.compose.bom)
@@ -134,18 +155,23 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // ── Firebase (FCM) ───────────────────────────────────────────────────────
-    val firebaseBom = platform(libs.firebase.bom)
-    implementation(firebaseBom)
-    implementation(libs.firebase.messaging)
-    implementation(libs.firebase.analytics)
+//    val firebaseBom = platform(libs.firebase.bom)
+//    implementation(firebaseBom)
+//    implementation(libs.firebase.messaging)
+//    implementation(libs.firebase.analytics)
 
-    // ── WorkManager ───────────────────────────────────────────────────────────
+    // ── WorkManager + Hilt Work ───────────────────────────────────────────────
     implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
+    // ── DataStore ─────────────────────────────────────────────────────────────
+    implementation(libs.datastore.preferences)
 
     // ── Credential Manager (Google Sign-In) ──────────────────────────────────
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
-    implementation(libs.google.identity)
+    implementation(libs.googleid)
 
     // ── Security ─────────────────────────────────────────────────────────────
     implementation(libs.security.crypto)
@@ -166,5 +192,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
     kspAndroidTest(libs.hilt.android.compiler)
 }

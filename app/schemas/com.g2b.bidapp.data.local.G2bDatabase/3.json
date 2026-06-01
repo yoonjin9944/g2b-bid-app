@@ -1,0 +1,236 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "c8925e4e2e476ec55e96e0c281253aa2",
+    "entities": [
+      {
+        "tableName": "watched_bids",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `user_id` TEXT NOT NULL, `bid_ntce_no` TEXT NOT NULL, `bid_ntce_nm` TEXT NOT NULL, `ntce_instt_nm` TEXT, `dminstt_nm` TEXT, `bid_ntce_dt` INTEGER, `bid_clse_dt` INTEGER, `openg_dt` INTEGER, `presmpt_prce` INTEGER, `bdgt_amt` INTEGER, `bid_category` TEXT NOT NULL, `current_status` TEXT NOT NULL, `bid_ntce_dtl_url` TEXT, `watched_at` INTEGER NOT NULL, `synced_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bidNtceNo",
+            "columnName": "bid_ntce_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bidNtceNm",
+            "columnName": "bid_ntce_nm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ntceInsttNm",
+            "columnName": "ntce_instt_nm",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dmInsttNm",
+            "columnName": "dminstt_nm",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bidNtceDt",
+            "columnName": "bid_ntce_dt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bidClseDt",
+            "columnName": "bid_clse_dt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "opengDt",
+            "columnName": "openg_dt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "presmptPrce",
+            "columnName": "presmpt_prce",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bdgtAmt",
+            "columnName": "bdgt_amt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bidCategory",
+            "columnName": "bid_category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentStatus",
+            "columnName": "current_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bidNtceDtlUrl",
+            "columnName": "bid_ntce_dtl_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "watchedAt",
+            "columnName": "watched_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAt",
+            "columnName": "synced_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_watched_bids_user_id_bid_ntce_no",
+            "unique": true,
+            "columnNames": [
+              "user_id",
+              "bid_ntce_no"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_watched_bids_user_id_bid_ntce_no` ON `${TABLE_NAME}` (`user_id`, `bid_ntce_no`)"
+          }
+        ]
+      },
+      {
+        "tableName": "bid_status_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `watched_bid_id` TEXT NOT NULL, `previous_status` TEXT NOT NULL, `new_status` TEXT NOT NULL, `detected_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`watched_bid_id`) REFERENCES `watched_bids`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchedBidId",
+            "columnName": "watched_bid_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousStatus",
+            "columnName": "previous_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "newStatus",
+            "columnName": "new_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detected_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_bid_status_history_watched_bid_id",
+            "unique": false,
+            "columnNames": [
+              "watched_bid_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_bid_status_history_watched_bid_id` ON `${TABLE_NAME}` (`watched_bid_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "watched_bids",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "watched_bid_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notifications",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `watchedBidId` TEXT, `bidNtceNm` TEXT, `message` TEXT NOT NULL, `isRead` INTEGER NOT NULL, `receivedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchedBidId",
+            "columnName": "watchedBidId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bidNtceNm",
+            "columnName": "bidNtceNm",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "message",
+            "columnName": "message",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRead",
+            "columnName": "isRead",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receivedAt",
+            "columnName": "receivedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c8925e4e2e476ec55e96e0c281253aa2')"
+    ]
+  }
+}

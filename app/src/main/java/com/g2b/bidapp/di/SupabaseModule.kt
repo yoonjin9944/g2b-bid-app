@@ -7,10 +7,17 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.ExternalAuthAction
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.realtime.realtime
+import io.ktor.client.engine.android.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import javax.inject.Singleton
 
 @Module
@@ -24,9 +31,34 @@ object SupabaseModule {
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY
         ) {
-            install(Auth)
+            install(Auth) {
+                scheme = "com.g2b.bidapp"
+                host = "login-callback"
+                defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
+            }
             install(Postgrest)
             install(Realtime)
-            install(Functions)
+            install(Functions) // 향후 나라장터 상태 스케줄러 기능 호출 시 주석 해제
+            httpEngine = Android.create()
         }
+
+    @Provides
+    @Singleton
+    fun provideAuth(client: SupabaseClient): Auth = client.auth
+
+    @Provides
+    @Singleton
+    fun providePostgrest(client: SupabaseClient): Postgrest = client.postgrest
+
+    @Provides
+    @Singleton
+    fun provideRealtime(client: SupabaseClient): Realtime = client.realtime
+
+    @Provides
+    @Singleton
+    fun provideFunctions(client: SupabaseClient): Functions = client.functions
+
+    @Provides
+    @Singleton
+    fun provideAuthRedirectFlow(): MutableSharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
 }
