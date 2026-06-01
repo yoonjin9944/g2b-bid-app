@@ -19,6 +19,11 @@ const supabase = createClient(
   { realtime: { transport: NoopWebSocket } }
 );
 
+// 날짜 기반 알림 판정 window (매시간 실행 기준으로 각 알림이 1회만 발송되도록 설정)
+const CLOSING_SOON_MIN_MS = 23 * 60 * 60 * 1000; // 23시간
+const CLOSING_SOON_MAX_MS = 24 * 60 * 60 * 1000; // 24시간
+const JUST_CLOSED_MAX_MS  =      60 * 60 * 1000; //  1시간
+
 async function getFcmAccessToken() {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
   const auth = new GoogleAuth({
@@ -29,47 +34,85 @@ async function getFcmAccessToken() {
 }
 
 async function main() {
-  // 1. 폴링 대상 관심공고 조회 (최종 상태 제외)
+  // 1. 폴링 대상 관심공고 조회 (날짜 필드 포함)
   const { data: bids } = await supabase
     .from("bid_notices")
-    .select("id, user_id, bid_ntce_no, bid_category, current_status")
+    .select("id, user_id, bid_ntce_no, bid_ntce_nm, bid_category, current_status, bid_clse_dt, openg_dt")
     .not("current_status", "in", '("OPENED","CANCELLED")');
 
-  // 2. bid_ntce_no 중복 제거
+  if (!bids || bids.length === 0) {
+    console.log("No bids to poll.");
+    await supabase.from("bid_notices").select("id").limit(1); // Ping
+    return;
+  }
+
+  // 2. bid_ntce_no 중복 제거 (API 호출 최소화)
   const unique = [...new Map(bids.map((b) => [b.bid_ntce_no, b])).values()];
 
   const fcmToken = await getFcmAccessToken();
+  const now = Date.now();
 
   for (const bid of unique) {
     await new Promise((r) => setTimeout(r, 50)); // 30 tps 제한 대응
 
-    // 3. 조달청 API로 현재 상태 확인
-    const apiStatus = await fetchBidStatus(bid.bid_ntce_no, bid.bid_category);
-    if (!apiStatus) continue;
-
-    // 4. 상태 변경 감지
     const subscribers = bids.filter((b) => b.bid_ntce_no === bid.bid_ntce_no);
+    const clseDtMs = bid.bid_clse_dt ? new Date(bid.bid_clse_dt).getTime() : null;
+    const opengDtMs = bid.openg_dt   ? new Date(bid.openg_dt).getTime()   : null;
+
+    // A. 조달청 API 기반 공고 변경 감지 (변경공고/취소공고/재공고)
+    const apiStatus = await fetchBidStatus(bid.bid_ntce_no, bid.bid_category);
     for (const sub of subscribers) {
-      if (sub.current_status !== apiStatus) {
-        await updateStatus(sub.id, sub.user_id, apiStatus, sub.current_status, bid.bid_ntce_no, fcmToken);
+      if (apiStatus && sub.current_status !== apiStatus) {
+        await updateStatus(sub.id, sub.user_id, apiStatus, sub.current_status, bid.bid_ntce_no, bid.bid_ntce_nm, fcmToken);
       } else {
-        // 변경 없어도 last_checked_at 갱신
         await supabase.from("bid_notices").update({ last_checked_at: new Date().toISOString() }).eq("id", sub.id);
+      }
+    }
+
+    // B. 날짜 기반 알림
+    for (const sub of subscribers) {
+      if (clseDtMs !== null) {
+        const remaining = clseDtMs - now;
+
+        // B-1. 마감 임박: 23~24시간 이내 (1시간 window → 1회만 발송)
+        if (remaining > CLOSING_SOON_MIN_MS && remaining <= CLOSING_SOON_MAX_MS) {
+          await sendDateAlert(
+            sub.id, sub.user_id, bid.bid_ntce_no, bid.bid_ntce_nm,
+            "마감 임박", "투찰 마감까지 24시간 미만 남았습니다",
+            fcmToken
+          );
+        }
+
+        // B-2. 투찰 마감: 마감 후 1시간 이내 (1시간 window → 1회만 발송)
+        if (now > clseDtMs && (now - clseDtMs) <= JUST_CLOSED_MAX_MS) {
+          await sendDateAlert(
+            sub.id, sub.user_id, bid.bid_ntce_no, bid.bid_ntce_nm,
+            "투찰 마감", "투찰이 마감되었습니다",
+            fcmToken
+          );
+        }
+      }
+
+      // B-3. 개찰: opengDt 경과 + 아직 OPENED 아님 → current_status 업데이트 + 알림
+      if (opengDtMs !== null && now > opengDtMs && sub.current_status !== "OPENED") {
+        await updateStatus(
+          sub.id, sub.user_id, "OPENED", sub.current_status,
+          bid.bid_ntce_no, bid.bid_ntce_nm, fcmToken
+        );
       }
     }
   }
 
-  // 5. Supabase Ping (Free 플랜 자동 일시정지 방지)
+  // Supabase Ping (Free 플랜 자동 일시정지 방지)
   await supabase.from("bid_notices").select("id").limit(1);
-
   console.log("Polling complete.");
 }
 
 async function fetchBidStatus(bidNtceNo, category) {
   const endpoints = {
     CNSTWK: "getBidPblancListInfoCnstwk",
-    SERVC: "getBidPblancListInfoServc",
-    THNG: "getBidPblancListInfoThng",
+    SERVC:  "getBidPblancListInfoServc",
+    THNG:   "getBidPblancListInfoThng",
   };
   const endpoint = endpoints[category] || "getBidPblancListInfoCnstwk";
   try {
@@ -100,14 +143,13 @@ function mapNtceKindNm(ntceKindNm) {
   return null;
 }
 
-async function updateStatus(bidId, userId, newStatus, prevStatus, bidNtceNo, fcmToken) {
-  // DB 업데이트 (Realtime 이벤트 자동 발생)
+// 공고 상태 변경 (DB 업데이트 + 이력 + 알림)
+async function updateStatus(bidId, userId, newStatus, prevStatus, bidNtceNo, bidNtceNm, fcmToken) {
   await supabase
     .from("bid_notices")
     .update({ current_status: newStatus, last_checked_at: new Date().toISOString() })
     .eq("id", bidId);
 
-  // 이력 기록
   await supabase.from("bid_notice_status_history").insert({
     bid_notice_id: bidId,
     previous_status: prevStatus,
@@ -115,41 +157,58 @@ async function updateStatus(bidId, userId, newStatus, prevStatus, bidNtceNo, fcm
     detected_at: new Date().toISOString(),
   });
 
-  // 알림 DB 저장 (앱에서 조회용)
+  const statusLabel = { CHANGED: "변경공고", CANCELLED: "취소공고", REOPENED: "재공고", OPENED: "개찰" }[newStatus] ?? newStatus;
+  const body = `${statusLabel} 처리되었습니다`;
+
   await supabase.from("notifications").insert({
     user_id: userId,
     watched_bid_id: bidId,
-    message: `공고 상태가 ${prevStatus} → ${newStatus}으로 변경되었습니다.`,
+    message: body,
   });
 
-  // FCM 전송
+  await sendPush(userId, bidId, bidNtceNo, bidNtceNm, "공고 상태 변경", body, newStatus, fcmToken);
+}
+
+// 날짜 기반 알림 (DB 상태 변경 없음, 알림만 발송)
+async function sendDateAlert(bidId, userId, bidNtceNo, bidNtceNm, title, body, fcmToken) {
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    watched_bid_id: bidId,
+    message: body,
+  });
+
+  await sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, null, fcmToken);
+}
+
+// FCM 전송
+async function sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, newStatus, fcmToken) {
   const { data: userData } = await supabase
     .from("users")
     .select("fcm_token")
     .eq("id", userId)
     .single();
 
-  if (userData?.fcm_token && fcmToken) {
-    const projectId = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON).project_id;
-    await axios.post(
-      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-      {
-        message: {
-          token: userData.fcm_token,
-          notification: {
-            title: `공고 상태 변경`,
-            body: `공고 ${bidNtceNo} 상태: ${prevStatus} → ${newStatus}`,
-          },
-          data: {
-            bid_ntce_no: bidNtceNo,
-            new_status: newStatus,
-            watched_bid_id: bidId,
-          },
+  if (!userData?.fcm_token || !fcmToken) return;
+
+  const projectId = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON).project_id;
+  await axios.post(
+    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+    {
+      message: {
+        token: userData.fcm_token,
+        notification: {
+          title: bidNtceNm ?? title, // 공고명을 알림 제목으로
+          body,
+        },
+        data: {
+          bid_ntce_no: bidNtceNo,
+          watched_bid_id: bidId,
+          ...(newStatus && { new_status: newStatus }),
         },
       },
-      { headers: { Authorization: `Bearer ${fcmToken.token}` } }
-    );
-  }
+    },
+    { headers: { Authorization: `Bearer ${fcmToken.token}` } }
+  );
 }
 
 main().catch(console.error);
