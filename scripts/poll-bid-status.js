@@ -2,9 +2,21 @@ const { createClient } = require("@supabase/supabase-js");
 const axios = require("axios");
 const { GoogleAuth } = require("google-auth-library");
 
+// DB 쿼리 전용 스크립트 — Realtime 미사용
+// transport에 stub을 전달해 RealtimeClient 초기화 시 WebSocket 체크를 우회
+class NoopWebSocket {
+  constructor() { this.readyState = 3; } // CLOSED
+  send() {} close() {} addEventListener() {} removeEventListener() {}
+}
+NoopWebSocket.CONNECTING = 0;
+NoopWebSocket.OPEN = 1;
+NoopWebSocket.CLOSING = 2;
+NoopWebSocket.CLOSED = 3;
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { realtime: { transport: NoopWebSocket } }
 );
 
 async function getFcmAccessToken() {
