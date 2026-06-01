@@ -196,11 +196,10 @@ async function sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, newSta
     {
       message: {
         token: userData.fcm_token,
-        notification: {
-          title: bidNtceNm ?? title, // 공고명을 알림 제목으로
-          body,
-        },
+        android: { priority: "high" }, // 종료 상태에서도 도달 보장
         data: {
+          title: bidNtceNm ?? title,
+          body,
           bid_ntce_no: bidNtceNo,
           watched_bid_id: bidId,
           ...(newStatus && { new_status: newStatus }),

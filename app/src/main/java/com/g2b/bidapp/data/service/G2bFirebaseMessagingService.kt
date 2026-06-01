@@ -24,8 +24,8 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var authRepository: AuthRepository
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val title = message.notification?.title ?: return
-        val body = message.notification?.body ?: return
+        val title = message.data["title"] ?: return
+        val body = message.data["body"] ?: return
         val bidNtceNo = message.data["bid_ntce_no"]
         val newStatus = message.data["new_status"]
 
