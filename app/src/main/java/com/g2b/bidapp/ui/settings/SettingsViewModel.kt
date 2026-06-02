@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g2b.bidapp.data.service.G2bFirebaseMessagingService
 import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.User
 import com.g2b.bidapp.domain.model.WatchedBid
@@ -82,9 +83,9 @@ open class SettingsViewModel @Inject constructor(
     }
 
     companion object {
-        val KEY_NOTIFY_CHANGED = booleanPreferencesKey("notify_changed")
-        val KEY_NOTIFY_CANCELLED = booleanPreferencesKey("notify_cancelled")
-        val KEY_NOTIFY_OPENED = booleanPreferencesKey("notify_opened")
+        val KEY_NOTIFY_CHANGED   = G2bFirebaseMessagingService.KEY_NOTIFY_CHANGED
+        val KEY_NOTIFY_CANCELLED = G2bFirebaseMessagingService.KEY_NOTIFY_CANCELLED
+        val KEY_NOTIFY_OPENED    = G2bFirebaseMessagingService.KEY_NOTIFY_OPENED
 
         fun preview() = @SuppressLint("StaticFieldLeak")
         object : SettingsViewModel(
