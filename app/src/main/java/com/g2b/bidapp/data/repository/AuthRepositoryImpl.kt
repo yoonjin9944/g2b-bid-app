@@ -67,16 +67,26 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut(): Result<Unit> = runCatching {
+        try {
+            val userId = auth.currentUserOrNull()?.id
+            val token = FirebaseMessaging.getInstance().token.await()
+            if (userId != null) {
+                postgrest.from("user_fcm_tokens").delete {
+                    filter {
+                        eq("user_id", userId)
+                        eq("fcm_token", token)
+                    }
+                }
+            }
+        } catch (_: Exception) {}
         auth.signOut()
     }
 
-    // 마지막 로그인 기기의 FCM 토큰 업데이트 (통합 테이블 public.users의 컬럼을 업데이트)
     override suspend fun upsertFcmToken(userId: String, fcmToken: String): Result<Unit> = runCatching {
-        postgrest.from("users")
-            .update(mapOf("fcm_token" to fcmToken)) {
-                filter {
-                    eq("id", userId)
-                }
+        postgrest.from("user_fcm_tokens")
+            .upsert(mapOf("user_id" to userId, "fcm_token" to fcmToken)) {
+                onConflict = "user_id,fcm_token"
+                ignoreDuplicates = true
             }
     }
 

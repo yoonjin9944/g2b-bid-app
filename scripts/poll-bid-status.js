@@ -180,34 +180,44 @@ async function sendDateAlert(bidId, userId, bidNtceNo, bidNtceNm, title, body, f
   await sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, null, fcmToken);
 }
 
-// FCM 전송
+// FCM 전송 (기기별 전체 발송)
 async function sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, newStatus, fcmToken) {
-  const { data: userData } = await supabase
-    .from("users")
+  const { data: tokens } = await supabase
+    .from("user_fcm_tokens")
     .select("fcm_token")
-    .eq("id", userId)
-    .single();
+    .eq("user_id", userId);
 
-  if (!userData?.fcm_token || !fcmToken) return;
+  if (!tokens || tokens.length === 0 || !fcmToken) return;
 
   const projectId = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON).project_id;
-  await axios.post(
-    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-    {
-      message: {
-        token: userData.fcm_token,
-        android: { priority: "high" }, // 종료 상태에서도 도달 보장
-        data: {
-          title: bidNtceNm ?? title,
-          body,
-          bid_ntce_no: bidNtceNo,
-          watched_bid_id: bidId,
-          ...(newStatus && { new_status: newStatus }),
+
+  for (const { fcm_token } of tokens) {
+    try {
+      await axios.post(
+        `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+        {
+          message: {
+            token: fcm_token,
+            android: { priority: "high" }, // 종료 상태에서도 도달 보장
+            data: {
+              title: bidNtceNm ?? title,
+              body,
+              bid_ntce_no: bidNtceNo,
+              watched_bid_id: bidId,
+              ...(newStatus && { new_status: newStatus }),
+            },
+          },
         },
-      },
-    },
-    { headers: { Authorization: `Bearer ${fcmToken.token}` } }
-  );
+        { headers: { Authorization: `Bearer ${fcmToken.token}` } }
+      );
+    } catch (e) {
+      // 만료·무효 토큰은 자동 삭제
+      const status = e.response?.data?.error?.status;
+      if (status === "INVALID_ARGUMENT" || status === "UNREGISTERED") {
+        await supabase.from("user_fcm_tokens").delete().eq("fcm_token", fcm_token);
+      }
+    }
+  }
 }
 
 main().catch(console.error);
