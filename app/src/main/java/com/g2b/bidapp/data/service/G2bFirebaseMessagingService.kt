@@ -4,6 +4,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import com.g2b.bidapp.R
 import com.g2b.bidapp.data.local.dao.NotificationDao
 import com.g2b.bidapp.data.local.entity.NotificationEntity
@@ -13,6 +16,7 @@ import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
@@ -22,6 +26,7 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var notificationDao: NotificationDao
     @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var dataStore: DataStore<Preferences>
 
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.data["title"] ?: return
@@ -31,6 +36,16 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
 
         // Room에 저장
         CoroutineScope(Dispatchers.IO).launch {
+            // 알림 설정 확인
+            val prefs = dataStore.data.first()
+            val shouldNotify = when (newStatus) {
+                "CHANGED", "REOPENED" -> prefs[KEY_NOTIFY_CHANGED] ?: true
+                "CANCELLED"           -> prefs[KEY_NOTIFY_CANCELLED] ?: true
+                "OPENED"              -> prefs[KEY_NOTIFY_OPENED] ?: true
+                else                  -> true // 마감 임박, 투찰 마감은 항상 표시
+            }
+            if (!shouldNotify) return@launch
+
             notificationDao.insert(
                 NotificationEntity(
                     id = UUID.randomUUID().toString(),
@@ -40,14 +55,11 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
                     receivedAt = System.currentTimeMillis(),
                 )
             )
+            showNotification(title, body, bidNtceNo)
         }
-
-        // 시스템 알림 표시
-        showNotification(title, body, bidNtceNo)
     }
 
     override fun onNewToken(token: String) {
-        // FCM 토큰 갱신 시 Supabase users 테이블 업데이트
         CoroutineScope(Dispatchers.IO).launch {
             val user = authRepository.getCurrentUser() ?: return@launch
             authRepository.upsertFcmToken(user.id, token)
@@ -75,5 +87,11 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
             .build()
 
         notificationManager.notify(bidNtceNo.hashCode(), notification)
+    }
+
+    companion object {
+        val KEY_NOTIFY_CHANGED   = booleanPreferencesKey("notify_changed")
+        val KEY_NOTIFY_CANCELLED = booleanPreferencesKey("notify_cancelled")
+        val KEY_NOTIFY_OPENED    = booleanPreferencesKey("notify_opened")
     }
 }
