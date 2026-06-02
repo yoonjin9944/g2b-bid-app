@@ -1,19 +1,22 @@
 package com.g2b.bidapp
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.g2b.bidapp.navigation.AppNavGraph
 import com.g2b.bidapp.ui.theme.G2bBidAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.parseSessionFromUrl
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,10 +32,20 @@ class MainActivity : ComponentActivity() {
 
     private val TAG = "MainActivity"
 
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* 사용자 결정은 시스템이 저장 — 별도 처리 불필요 */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         // 최초 실행 시 딥링크가 포함되어 들어온 경우 처리
         intent?.data?.let { uri ->

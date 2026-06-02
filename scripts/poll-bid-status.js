@@ -211,7 +211,7 @@ async function sendPush(userId, bidId, bidNtceNo, bidNtceNm, title, body, newSta
         { headers: { Authorization: `Bearer ${fcmToken.token}` } }
       );
     } catch (e) {
-      // 만료·무효 토큰은 자동 삭제
+      console.error("FCM 전송 실패 [token:", fcm_token.slice(0, 20) + "...]", e.response?.data ?? e.message);
       const status = e.response?.data?.error?.status;
       if (status === "INVALID_ARGUMENT" || status === "UNREGISTERED") {
         await supabase.from("user_fcm_tokens").delete().eq("fcm_token", fcm_token);
