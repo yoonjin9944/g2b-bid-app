@@ -1,8 +1,8 @@
 name: Bid Status Polling
 
 on:
-  schedule:
-    - cron: "0 * * * *" # 매시간 정각 실행
+  # schedule:
+  #   - cron: "0 * * * *" # 매시간 정각 실행
   workflow_dispatch:    # 수동 실행도 가능
 
 jobs:

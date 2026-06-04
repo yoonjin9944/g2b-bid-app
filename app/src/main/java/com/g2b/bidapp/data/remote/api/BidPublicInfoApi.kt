@@ -8,7 +8,7 @@ interface BidPublicInfoApi {
 
     @GET("ad/BidPublicInfoService/getBidPblancListInfoCnstwkPPSSrch")
     suspend fun getCnstwkList(
-        @Query("inqryDiv") inqryDiv: Int = 1,
+        @Query("inqryDiv") inqryDiv: Int = 1, // 등록일시 기준 조회
         @Query("pageNo") pageNo: Int,
         @Query("numOfRows") numOfRows: Int,
         @Query("bidNtceNm") bidNtceNm: String? = null,
