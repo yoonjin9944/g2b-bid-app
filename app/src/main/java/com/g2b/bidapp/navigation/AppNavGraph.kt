@@ -1,5 +1,7 @@
 package com.g2b.bidapp.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
@@ -7,6 +9,7 @@ import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,7 +17,9 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,6 +34,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.g2b.bidapp.ui.bid.detail.BidDetailBottomSheet
+import com.g2b.bidapp.ui.bid.detail.BidDetailUiState
+import com.g2b.bidapp.ui.bid.detail.BidDetailViewModel
 import com.g2b.bidapp.ui.bid.list.BidListScreen
 import com.g2b.bidapp.ui.bid.result.BidResultListScreen
 import com.g2b.bidapp.ui.bid.search.SearchScreen
@@ -39,6 +47,7 @@ import com.g2b.bidapp.ui.notification.NotificationListScreen
 import com.g2b.bidapp.ui.settings.SettingsScreen
 import com.g2b.bidapp.ui.splash.SplashScreen
 import com.g2b.bidapp.ui.theme.NavyBlue
+import kotlinx.coroutines.flow.MutableStateFlow
 
 private data class BottomNavItem(
     val route: String,
@@ -49,7 +58,7 @@ private data class BottomNavItem(
 private val bottomNavItems = listOf(
     BottomNavItem(Screen.BidList.createRoute(), "입찰공고", Icons.Outlined.Description),
     BottomNavItem(Screen.Watchlist.route, "관심공고", Icons.Outlined.Favorite),
-//    BottomNavItem(Screen.BidResult.route, "낙찰결과", Icons.Outlined.EmojiEvents),
+    BottomNavItem(Screen.BidResult.route, "낙찰결과", Icons.Outlined.EmojiEvents),
     BottomNavItem(Screen.Notifications.route, "알림", Icons.Outlined.Notifications),
     BottomNavItem(Screen.Settings.route, "설정", Icons.Outlined.Settings),
 )
@@ -67,6 +76,7 @@ private val bottomNavRoutes = setOf(
 fun AppNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
+    fcmDeepLinkFlow: MutableStateFlow<String?>? = null,
 ) {
     val searchSharedViewModel: SearchSharedViewModel = hiltViewModel()
     val incomingSearchParams by searchSharedViewModel.pendingParams.collectAsStateWithLifecycle()
@@ -74,6 +84,18 @@ fun AppNavGraph(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
     val showBottomNav = currentRoute in bottomNavRoutes
+
+    // FCM 딥링크 수신 → BidDetail로 네비게이션 (앱 실행 중 백그라운드에서 탭할 때)
+    // 콜드 스타트는 SplashViewModel에서 처리
+    LaunchedEffect(Unit) {
+        fcmDeepLinkFlow?.collect { bidNtceNo ->
+            bidNtceNo ?: return@collect
+            navController.navigate(Screen.BidDetail.createRoute(bidNtceNo)) {
+                launchSingleTop = true
+            }
+            fcmDeepLinkFlow.value = null  // 소비
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -111,6 +133,13 @@ fun AppNavGraph(
                         navController.navigate(Screen.BidList.createRoute()) {
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
+                    },
+                    onNavigateToDetail = { bidNtceNo ->
+                        // FCM 콜드 스타트: BidList를 백스택에 깔고 BidDetail로 바로 이동
+                        navController.navigate(Screen.BidList.createRoute()) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                        navController.navigate(Screen.BidDetail.createRoute(bidNtceNo))
                     },
                 )
             }
@@ -160,8 +189,41 @@ fun AppNavGraph(
                         type = NavType.StringType
                     }
                 )
-            ) {
-                // 현재 미사용. ModalBottomSheet는 각 화면 내부에서 직접 관리.
+            ) { backStackEntry ->
+                val bidNtceNo = backStackEntry.arguments
+                    ?.getString(Screen.BidDetail.ARG_BID_NTCE_NO) ?: return@composable
+
+                val viewModel: BidDetailViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(bidNtceNo) {
+                    viewModel.loadByBidNtceNo(bidNtceNo)
+                }
+
+                when (val state = uiState) {
+                    is BidDetailUiState.Loading,
+                    is BidDetailUiState.Idle -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = NavyBlue)
+                        }
+                    }
+
+                    is BidDetailUiState.NotFound -> {
+                        LaunchedEffect(Unit) { navController.popBackStack() }
+                    }
+
+                    is BidDetailUiState.Success -> {
+                        BidDetailBottomSheet(
+                            notice = state.notice,
+                            onDismiss = { navController.popBackStack() },
+                            initialIsWatched = state.isWatched,
+                            viewModel = viewModel,
+                        )
+                    }
+                }
             }
 
             // Phase 7: WatchlistScreen 추가

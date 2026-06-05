@@ -15,6 +15,7 @@ fun BidNoticeDto.toModel(category: BidCategory): BidNotice = BidNotice(
     opengDt = opengDt,
     presmptPrce = presmptPrce?.toLongOrNull(),
     bdgtAmt = bdgtAmt?.toLongOrNull(),
+    ntceKindNm = ntceKindNm,
     bidCategory = category,
     bidNtceDtlUrl = bidNtceDtlUrl,
 )

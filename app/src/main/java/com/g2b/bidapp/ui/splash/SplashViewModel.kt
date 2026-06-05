@@ -36,13 +36,18 @@ sealed interface SplashUiState {
     data object NavigateToLogin : SplashUiState
 
     data object NavigateToMain : SplashUiState
+
+    // FCM 딥링크로 진입 시 — 로그인 상태 + 이동할 bidNtceNo 보유
+    data class NavigateToDetail(val bidNtceNo: String) : SplashUiState
 }
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val versionCheckRepository: VersionCheckRepository,
     private val apkDownloader: ApkDownloader,
-    private val auth: Auth
+    private val auth: Auth,
+    @javax.inject.Named("fcmDeepLink")
+    private val fcmDeepLinkFlow: MutableStateFlow<String?>,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SplashUiState>(SplashUiState.Loading)
@@ -118,7 +123,14 @@ class SplashViewModel @Inject constructor(
                 null
             }
             _uiState.value = if (session != null) {
-                SplashUiState.NavigateToMain
+                // FCM 딥링크가 대기 중이면 BidDetail로 바로 이동
+                val pendingBidNtceNo = fcmDeepLinkFlow.value
+                if (pendingBidNtceNo != null) {
+                    fcmDeepLinkFlow.value = null  // 소비
+                    SplashUiState.NavigateToDetail(pendingBidNtceNo)
+                } else {
+                    SplashUiState.NavigateToMain
+                }
             } else {
                 SplashUiState.NavigateToLogin
             }

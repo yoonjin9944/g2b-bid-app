@@ -9,7 +9,8 @@ import retrofit2.http.Query
 // ServiceKey + type=json 은 AuthInterceptor가 자동 주입
 interface ScsbidInfoApi {
 
-    @GET("as/ScsbidInfoService/getScsbidListSttusCnstwk")
+//    @GET("as/ScsbidInfoService/getScsbidListSttusCnstwk")
+    @GET("as/ScsbidInfoService/getScsbidListSttusCnstwkPPSSrch")
     suspend fun getCnstwkList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,
@@ -20,7 +21,8 @@ interface ScsbidInfoApi {
         @Query("ntceInsttNm") ntceInsttNm: String? = null,
     ): BidResultListResponse
 
-    @GET("as/ScsbidInfoService/getScsbidListSttusServc")
+//    @GET("as/ScsbidInfoService/getScsbidListSttusServc")
+    @GET("as/ScsbidInfoService/getScsbidListSttusServcPPSSrch")
     suspend fun getServcList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,
@@ -31,7 +33,8 @@ interface ScsbidInfoApi {
         @Query("ntceInsttNm") ntceInsttNm: String? = null,
     ): BidResultListResponse
 
-    @GET("as/ScsbidInfoService/getScsbidListSttusThng")
+//    @GET("as/ScsbidInfoService/getScsbidListSttusThng")
+    @GET("as/ScsbidInfoService/getScsbidListSttusThngPPSSrch")
     suspend fun getThngList(
         @Query("inqryDiv") inqryDiv: Int = 1,
         @Query("pageNo") pageNo: Int,

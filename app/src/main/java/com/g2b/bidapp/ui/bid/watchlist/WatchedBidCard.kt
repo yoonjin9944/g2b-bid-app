@@ -71,18 +71,15 @@ private fun WatchedBid.resolveLifecycleStage(): BidLifecycleStage {
     }
 }
 
+// 마감까지 남은 일수 기준 경과 비율 (0f ~ 1f)
+// 만점 기준 = DEADLINE_FULL_DAYS일 → D-0이면 1f, D-30이상이면 0f
+// 공고 기간과 무관하게 동일한 D-day면 동일한 비율 표시
 private fun WatchedBid.lifetimeFraction(): Float {
     val end = bidClseDt.toSeoulDateTime() ?: return 0f
     val now = LocalDateTime.now()
     if (now >= end) return 1f
-    val start = bidNtceDt.toSeoulDateTime()
-    return if (start != null && start < end) {
-        val total = ChronoUnit.SECONDS.between(start, end).toFloat()
-        (ChronoUnit.SECONDS.between(start, now).toFloat() / total).coerceIn(0f, 1f)
-    } else {
-        val daysLeft = ChronoUnit.DAYS.between(now, end).toFloat().coerceAtLeast(0f)
-        (1f - (daysLeft / 60f)).coerceIn(0f, 1f)
-    }
+    val daysLeft = ChronoUnit.DAYS.between(now, end).toFloat().coerceAtLeast(0f)
+    return (1f - (daysLeft / DEADLINE_FULL_DAYS)).coerceIn(0f, 1f)
 }
 
 private fun WatchedBid.daysRemaining(): Int? {
@@ -117,8 +114,18 @@ fun WatchedBidCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LifecycleStageBadge(stage = stage)
-                    if (bid.currentStatus != BidStatus.REGISTERED) {
+                    // 유찰/낙찰 확정 시 LifecycleStageBadge("개찰")는 숨기고 결과 배지만 표시
+                    val isFinalResult = bid.currentStatus == BidStatus.FAILED_BID ||
+                                       bid.currentStatus == BidStatus.AWARDED
+                    if (!isFinalResult) {
+                        LifecycleStageBadge(stage = stage)
+                    }
+                    // REGISTERED: 기본 상태라 표시 불필요
+                    // OPENED, BID_CLOSED: LifecycleStageBadge가 이미 표현 → 중복 방지
+                    // FAILED_BID, AWARDED: 위에서 LifecycleStageBadge를 숨겼으므로 단독 표시
+                    if (bid.currentStatus != BidStatus.REGISTERED &&
+                        bid.currentStatus != BidStatus.OPENED &&
+                        bid.currentStatus != BidStatus.BID_CLOSED) {
                         Spacer(Modifier.width(6.dp))
                         BidStatusBadge(status = bid.currentStatus)
                     }
@@ -297,6 +304,9 @@ private fun BidLifecycleStage.barColor() = when (this) {
     BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
     else -> Color(0xFF0060AC)
 }
+
+// 프로그레스바 만점 기준: 30일 이상 남으면 0%, 마감이면 100%
+private const val DEADLINE_FULL_DAYS = 30f
 
 private fun sampleWatchedBid() = WatchedBid(
     id = "sample-id",

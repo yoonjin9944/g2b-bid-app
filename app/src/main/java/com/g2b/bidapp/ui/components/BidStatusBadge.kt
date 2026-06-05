@@ -54,6 +54,21 @@ fun BidStatusBadge(
             StatusOpened,
             "개찰",
         )
+        BidStatus.BID_CLOSED -> Triple(
+            Color(0xFFECEFF1),
+            Color(0xFF6E7680),
+            "마감",
+        )
+        BidStatus.FAILED_BID -> Triple(
+            Color(0xFFFFDAD6),
+            StatusCancelled,
+            "유찰",
+        )
+        BidStatus.AWARDED -> Triple(
+            Color(0xFFD4EDDA),
+            Color(0xFF1B6B33),
+            "낙찰",
+        )
     }
 
     Box(

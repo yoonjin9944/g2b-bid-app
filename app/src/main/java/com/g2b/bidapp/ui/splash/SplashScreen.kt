@@ -43,14 +43,16 @@ import com.g2b.bidapp.ui.theme.NavyBlue
 fun SplashScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToMain: () -> Unit,
+    onNavigateToDetail: (String) -> Unit = {},
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {
-        when (uiState) {
+        when (val state = uiState) {
             is SplashUiState.NavigateToLogin -> onNavigateToLogin()
             is SplashUiState.NavigateToMain -> onNavigateToMain()
+            is SplashUiState.NavigateToDetail -> onNavigateToDetail(state.bidNtceNo)
             else -> Unit
         }
     }
@@ -68,7 +70,8 @@ fun SplashScreen(
         is SplashUiState.UpToDate,
         is SplashUiState.Error,
         is SplashUiState.NavigateToLogin,
-        is SplashUiState.NavigateToMain -> Unit
+        is SplashUiState.NavigateToMain,
+        is SplashUiState.NavigateToDetail -> Unit
 
         is SplashUiState.ForceUpdate ->
             ForceUpdateDialog(

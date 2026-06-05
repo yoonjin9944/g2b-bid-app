@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidNotice
+import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.ui.theme.BidNoticeColor
 import com.g2b.bidapp.ui.theme.NavyBlue
 import com.g2b.bidapp.ui.theme.StatusCancelled
@@ -88,11 +89,27 @@ fun BidNoticeCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusBadge(
-                        label = stage.label(),
-                        containerColor = stage.containerColor(),
-                        contentColor = stage.contentColor(),
-                    )
+                    val noticeStatus = remember(notice.ntceKindNm) {
+                        BidStatus.fromNtceKindNm(notice.ntceKindNm)
+                    }
+                    // 유찰/낙찰 확정 시 LifecycleStageBadge("개찰")는 숨기고 결과 배지만 표시
+                    val isFinalResult = noticeStatus == BidStatus.FAILED_BID ||
+                                       noticeStatus == BidStatus.AWARDED
+                    if (!isFinalResult) {
+                        StatusBadge(
+                            label = stage.label(),
+                            containerColor = stage.containerColor(),
+                            contentColor = stage.contentColor(),
+                        )
+                    }
+                    // REGISTERED(기본), OPENED, BID_CLOSED는 LifecycleStageBadge가 이미 표현
+                    // FAILED_BID, AWARDED: 위에서 LifecycleStageBadge를 숨겼으므로 단독 표시
+                    if (noticeStatus != BidStatus.REGISTERED &&
+                        noticeStatus != BidStatus.OPENED &&
+                        noticeStatus != BidStatus.BID_CLOSED) {
+                        Spacer(Modifier.width(6.dp))
+                        BidStatusBadge(status = noticeStatus)
+                    }
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "공고번호: ${notice.bidNtceNo}-${notice.bidNtceOrd}",
@@ -261,20 +278,15 @@ private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
     }
 }
 
-// 공고일(bidNtceDt) → 마감일(bidClseDt) 구간 기준 경과 비율 (0f ~ 1f)
-// bidNtceDt가 없으면(목록 API 미포함) 마감까지 남은 일수를 60일 기준으로 역산
+// 마감까지 남은 일수 기준 경과 비율 (0f ~ 1f)
+// 만점 기준 = DEADLINE_FULL_DAYS일 → D-0이면 1f, D-30이상이면 0f
+// 공고 기간과 무관하게 동일한 D-day면 동일한 비율 표시
 private fun BidNotice.lifetimeFraction(): Float {
     val end = bidClseDt?.parseG2bDateTime() ?: return 0f
     val now = LocalDateTime.now()
     if (now >= end) return 1f
-    val start = bidNtceDt?.parseG2bDateTime()
-    return if (start != null && start < end) {
-        val total = ChronoUnit.SECONDS.between(start, end).toFloat()
-        (ChronoUnit.SECONDS.between(start, now).toFloat() / total).coerceIn(0f, 1f)
-    } else {
-        val daysLeft = ChronoUnit.DAYS.between(now, end).toFloat().coerceAtLeast(0f)
-        (1f - (daysLeft / 60f)).coerceIn(0f, 1f)
-    }
+    val daysLeft = ChronoUnit.DAYS.between(now, end).toFloat().coerceAtLeast(0f)
+    return (1f - (daysLeft / DEADLINE_FULL_DAYS)).coerceIn(0f, 1f)
 }
 
 private fun BidNotice.daysRemaining(): Int? {
@@ -313,6 +325,9 @@ private fun BidLifecycleStage.barColor() = when (this) {
     else -> Color(0xFF0060AC)
 }
 
+// 프로그레스바 만점 기준: 30일 이상 남으면 0%, 마감이면 100%
+private const val DEADLINE_FULL_DAYS = 30f
+
 private fun sampleBidNotice() = BidNotice(
     bidNtceNo = "20240001234",
     bidNtceOrd = "000",
@@ -324,6 +339,7 @@ private fun sampleBidNotice() = BidNotice(
     opengDt = null,
     presmptPrce = 250000000L,
     bdgtAmt = null,
+    ntceKindNm = null,
     bidCategory = BidCategory.CNSTWK,
     bidNtceDtlUrl = null,
     isWatched = false,
