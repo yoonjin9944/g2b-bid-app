@@ -20,12 +20,15 @@ import com.g2b.bidapp.domain.model.WatchedBid
 import com.g2b.bidapp.domain.repository.WatchlistRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,11 +43,27 @@ class WatchlistRepositoryImpl @Inject constructor(
 
     private fun currentUserId(): String = auth.currentUserOrNull()?.id ?: ""
 
+    // Auth 세션 상태를 관찰 → 세션 복원 완료 시 자동으로 올바른 userId로 재조회
+    // 화면이 꺼졌다 켜질 때 세션 복원 전 "" userId로 빈 목록이 표시되는 버그 수정
     override fun getWatchlistFlow(): Flow<List<WatchedBid>> =
-        watchedBidDao.getAllFlow(currentUserId()).map { entities -> entities.map { it.toModel() } }
+        auth.sessionStatus.flatMapLatest { status ->
+            val userId = (status as? SessionStatus.Authenticated)?.session?.user?.id
+            if (userId.isNullOrEmpty()) {
+                flowOf(emptyList())
+            } else {
+                watchedBidDao.getAllFlow(userId).map { entities -> entities.map { it.toModel() } }
+            }
+        }
 
     override fun getWatchlistByKeywordFlow(keyword: String): Flow<List<WatchedBid>> =
-        watchedBidDao.getByKeywordFlow(currentUserId(), keyword).map { entities -> entities.map { it.toModel() } }
+        auth.sessionStatus.flatMapLatest { status ->
+            val userId = (status as? SessionStatus.Authenticated)?.session?.user?.id
+            if (userId.isNullOrEmpty()) {
+                flowOf(emptyList())
+            } else {
+                watchedBidDao.getByKeywordFlow(userId, keyword).map { entities -> entities.map { it.toModel() } }
+            }
+        }
 
     override suspend fun getWatchedBidNos(): Set<String> =
         withContext(ioDispatcher) { watchedBidDao.getAllBidNtceNos(currentUserId()).toSet() }

@@ -16,10 +16,10 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /**
- * 날짜 역방향 슬라이딩 페이지 전략
+ * 날짜 역방향 슬라이딩 페이지 전략 — 다중 날짜 병렬 fetch
  *
- * key(daysBack) = 0 → 기준 종료일, 1 → 하루 전, 2 → 이틀 전 …
- * 하루 단위로 조회해 bidNtceDt 내림차순 정렬 → 전체 목록이 최신순 보장
+ * key(weekBack) = 0 → 최근 DAYS_PER_PAGE일, 1 → 그 이전 DAYS_PER_PAGE일 …
+ * 1페이지 로드 시 DAYS_PER_PAGE일치를 병렬 fetch → 동일 대기시간에 더 많은 데이터 수집
  *
  * 누락 방지:
  *   - numOfRows = 999 로 1회 호출에 최대한 많이 수집
@@ -45,48 +45,57 @@ class BidNoticePagingSource(
     override fun getRefreshKey(state: PagingState<Int, BidNotice>): Int? = null
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, BidNotice> {
-        val daysBack = params.key ?: 0
-        val targetDate = endDateBase.minusDays(daysBack.toLong())
+        val weekBack = params.key ?: 0
+        val startDayBack = weekBack * DAYS_PER_PAGE
 
-        if (targetDate < startDateLimit) {
+        // 이번 페이지에서 담당할 날짜 목록 계산
+        val targetDates = (startDayBack until startDayBack + DAYS_PER_PAGE)
+            .map { endDateBase.minusDays(it.toLong()) }
+            .filter { it >= startDateLimit }
+
+        if (targetDates.isEmpty()) {
             return LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
         }
 
-        val bgnDt = targetDate.format(dateFmt) + "0000"
-        val endDt = targetDate.format(dateFmt) + "2359"
-
         return try {
-            val firstResponse = fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = 1)
-            val totalCount = firstResponse.response?.body?.totalCount ?: 0
-            val totalPages = ceil(totalCount.toFloat() / NUM_OF_ROWS).toInt().coerceAtLeast(1)
-
-            val allDtos = if (totalPages <= 1) {
-                firstResponse.response?.body?.items?.item ?: emptyList()
-            } else {
-                // totalCount > 999인 날: 나머지 페이지 병렬 fetch
-                coroutineScope {
-                    val extraDeferreds = (2..totalPages).map { pageNo ->
-                        async { fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = pageNo) }
-                    }
-                    val firstItems = firstResponse.response?.body?.items?.item ?: emptyList()
-                    val extraItems = extraDeferreds.awaitAll()
-                        .flatMap { it.response?.body?.items?.item ?: emptyList() }
-                    firstItems + extraItems
-                }
+            // DAYS_PER_PAGE일치 병렬 fetch
+            val notices = coroutineScope {
+                targetDates.map { date ->
+                    async { fetchDayAll(date) }
+                }.awaitAll()
             }
-
-            val notices = allDtos
+                .flatten()
                 .map { it.toModel(this.params.category ?: BidCategory.CNSTWK) }
                 .sortedByDescending { it.bidNtceDt }
 
-            val nextDaysBack = daysBack + 1
-            val nextDate = endDateBase.minusDays(nextDaysBack.toLong())
-            val nextKey = if (nextDate < startDateLimit) null else nextDaysBack
+            val nextWeekBack = weekBack + 1
+            val nextStartDate = endDateBase.minusDays((nextWeekBack * DAYS_PER_PAGE).toLong())
+            val nextKey = if (nextStartDate < startDateLimit) null else nextWeekBack
 
             LoadResult.Page(data = notices, prevKey = null, nextKey = nextKey)
         } catch (e: Exception) {
-            Log.e(TAG, "페이지 로드 실패 (daysBack=$daysBack, date=$targetDate, category=${this.params.category})", e)
+            Log.e(TAG, "페이지 로드 실패 (weekBack=$weekBack, category=${this.params.category})", e)
             LoadResult.Error(e)
+        }
+    }
+
+    // 하루치 전체 데이터 fetch (999건 초과 시 나머지 페이지 병렬 수집)
+    private suspend fun fetchDayAll(date: LocalDate) = coroutineScope {
+        val bgnDt = date.format(dateFmt) + "0000"
+        val endDt = date.format(dateFmt) + "2359"
+
+        val firstResponse = fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = 1)
+        val totalCount = firstResponse.response?.body?.totalCount ?: 0
+        val totalPages = ceil(totalCount.toFloat() / NUM_OF_ROWS).toInt().coerceAtLeast(1)
+
+        if (totalPages <= 1) {
+            firstResponse.response?.body?.items?.item ?: emptyList()
+        } else {
+            val firstItems = firstResponse.response?.body?.items?.item ?: emptyList()
+            val extraItems = (2..totalPages).map { pageNo ->
+                async { fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = pageNo) }
+            }.awaitAll().flatMap { it.response?.body?.items?.item ?: emptyList() }
+            firstItems + extraItems
         }
     }
 
@@ -124,5 +133,6 @@ class BidNoticePagingSource(
     companion object {
         private const val TAG = "BidNoticePagingSource"
         const val NUM_OF_ROWS = 999
+        private const val DAYS_PER_PAGE = 7  // 1페이지당 병렬 fetch할 날짜 수
     }
 }

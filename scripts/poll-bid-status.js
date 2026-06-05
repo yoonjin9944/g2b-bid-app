@@ -157,7 +157,15 @@ async function updateStatus(bidId, userId, newStatus, prevStatus, bidNtceNo, bid
     detected_at: new Date().toISOString(),
   });
 
-  const statusLabel = { CHANGED: "변경공고", CANCELLED: "취소공고", REOPENED: "재공고", OPENED: "개찰" }[newStatus] ?? newStatus;
+  const statusLabel = {
+    CHANGED:    "변경공고",
+    CANCELLED:  "취소공고",
+    REOPENED:   "재공고",
+    OPENED:     "개찰",
+    BID_CLOSED: "투찰 마감",
+    FAILED_BID: "유찰",
+    AWARDED:    "낙찰",
+  }[newStatus] ?? newStatus;
   const body = `${statusLabel} 처리되었습니다`;
 
   await supabase.from("notifications").insert({

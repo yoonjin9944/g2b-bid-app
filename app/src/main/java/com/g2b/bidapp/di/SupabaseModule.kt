@@ -18,6 +18,8 @@ import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.realtime
 import io.ktor.client.engine.android.*
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -61,4 +63,13 @@ object SupabaseModule {
     @Provides
     @Singleton
     fun provideAuthRedirectFlow(): MutableSharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+
+    // FCM 알림 탭 → 공고 상세 화면 이동용
+    // StateFlow 사용: 콜드 스타트 시 AppNavGraph collect 전 emit 유실 방지
+    // null = 대기 중인 딥링크 없음, non-null = 이동할 bidNtceNo
+    @Provides
+    @Singleton
+    @Named("fcmDeepLink")
+    fun provideFcmDeepLinkFlow(): MutableStateFlow<String?> =
+        MutableStateFlow(null)
 }

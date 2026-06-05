@@ -7,6 +7,9 @@ import com.g2b.bidapp.data.mapper.toModel
 import com.g2b.bidapp.data.remote.api.ScsbidInfoApi
 import com.g2b.bidapp.domain.model.BidCategory
 import com.g2b.bidapp.domain.model.BidResult
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.ceil
@@ -44,13 +47,16 @@ class BidResultPagingSource(
             val allDtos = if (totalPages <= 1) {
                 firstResponse.response?.body?.items?.item ?: emptyList()
             } else {
-                val allItems = mutableListOf<com.g2b.bidapp.data.remote.dto.BidResultDto>()
-                allItems.addAll(firstResponse.response?.body?.items?.item ?: emptyList())
-                for (pageNo in 2..totalPages) {
-                    val resp = fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = pageNo)
-                    allItems.addAll(resp.response?.body?.items?.item ?: emptyList())
+                // totalCount > 999인 날: 나머지 페이지 병렬 fetch
+                coroutineScope {
+                    val extraDeferreds = (2..totalPages).map { pageNo ->
+                        async { fetchDay(bgnDt = bgnDt, endDt = endDt, pageNo = pageNo) }
+                    }
+                    val firstItems = firstResponse.response?.body?.items?.item ?: emptyList()
+                    val extraItems = extraDeferreds.awaitAll()
+                        .flatMap { it.response?.body?.items?.item ?: emptyList() }
+                    firstItems + extraItems
                 }
-                allItems
             }
 
             val results = allDtos
@@ -98,6 +104,6 @@ class BidResultPagingSource(
 
     companion object {
         private const val TAG = "BidResultPagingSource"
-        const val NUM_OF_ROWS = 100
+        const val NUM_OF_ROWS = 999
     }
 }
