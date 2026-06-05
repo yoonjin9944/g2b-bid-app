@@ -326,7 +326,7 @@ private fun BidLifecycleStage.barColor() = when (this) {
 }
 
 // 프로그레스바 만점 기준: 30일 이상 남으면 0%, 마감이면 100%
-private const val DEADLINE_FULL_DAYS = 30f
+private const val DEADLINE_FULL_DAYS = 15f
 
 private fun sampleBidNotice() = BidNotice(
     bidNtceNo = "20240001234",
