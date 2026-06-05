@@ -83,10 +83,12 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun upsertFcmToken(userId: String, fcmToken: String): Result<Unit> = runCatching {
+        // fcm_token UNIQUE 기준으로 upsert
+        // → 동일 기기에서 계정 전환 시 user_id가 현재 계정으로 덮어씌워짐
         postgrest.from("user_fcm_tokens")
             .upsert(mapOf("user_id" to userId, "fcm_token" to fcmToken)) {
-                onConflict = "user_id,fcm_token"
-                ignoreDuplicates = true
+                onConflict = "fcm_token"
+                ignoreDuplicates = false
             }
     }
 
