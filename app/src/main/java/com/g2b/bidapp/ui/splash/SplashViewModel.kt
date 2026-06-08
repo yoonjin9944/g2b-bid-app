@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 sealed interface SplashUiState {
@@ -52,6 +53,9 @@ class SplashViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<SplashUiState>(SplashUiState.Loading)
     val uiState: StateFlow<SplashUiState> = _uiState.asStateFlow()
+
+    // 설정 화면에서 돌아왔을 때 재시도할 파일 보관
+    private var pendingInstallFile: File? = null
 
     init {
         startVersionCheck()
@@ -105,13 +109,26 @@ class SplashViewModel @Inject constructor(
                     is DownloadState.Progress ->
                         _uiState.value = SplashUiState.Downloading(state.fraction)
 
-                    is DownloadState.Done ->
+                    is DownloadState.Done -> {
+                        pendingInstallFile = state.file
                         apkDownloader.installApk(state.file)
+                        // installApk 가 false 를 반환하면 설정 화면으로 이동한 것
+                        // → onResume() 에서 권한 확인 후 재시도
+                    }
 
                     is DownloadState.Failure ->
                         _uiState.value = SplashUiState.Error(state.message)
                 }
             }
+        }
+    }
+
+    // SplashScreen 이 Resume 될 때 호출 — 설정 화면에서 허용 후 돌아온 경우 설치 재시도
+    fun onResume() {
+        val file = pendingInstallFile ?: return
+        if (apkDownloader.canInstall()) {
+            apkDownloader.installApk(file)
+            pendingInstallFile = null
         }
     }
 

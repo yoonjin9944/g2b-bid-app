@@ -97,10 +97,18 @@ class ApkDownloader @Inject constructor(
     }.flowOn(Dispatchers.IO)
 
     /**
-     * 다운로드된 APK 파일을 설치한다.
-     * 설치 권한이 없으면 설정 화면으로 안내한다.
+     * 출처를 알 수 없는 앱 설치 권한 여부를 반환한다.
      */
-    fun installApk(apkFile: File) {
+    fun canInstall(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            context.packageManager.canRequestPackageInstalls()
+
+    /**
+     * 다운로드된 APK 파일을 설치한다.
+     * 설치 권한이 없으면 설정 화면으로 안내하고 false 를 반환한다.
+     * 설치 Intent 를 실행했으면 true 를 반환한다.
+     */
+    fun installApk(apkFile: File): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
                 val settingsIntent = Intent(
@@ -108,7 +116,7 @@ class ApkDownloader @Inject constructor(
                     Uri.parse("package:${context.packageName}"),
                 ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
                 context.startActivity(settingsIntent)
-                return
+                return false
             }
         }
 
@@ -121,6 +129,7 @@ class ApkDownloader @Inject constructor(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+        return true
     }
 
     private fun getDestinationFile(): File {
