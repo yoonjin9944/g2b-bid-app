@@ -61,7 +61,7 @@ class BidResultPagingSource(
 
             val results = allDtos
                 .map { it.toModel(category) }
-                .sortedByDescending { it.opengDt }
+                .sortedByDescending { it.rlOpengDt }
 
             val nextDaysBack = daysBack + 1
             val nextDate = endDateBase.minusDays(nextDaysBack.toLong())

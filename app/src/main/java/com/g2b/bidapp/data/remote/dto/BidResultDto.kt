@@ -9,10 +9,10 @@ data class BidResultDto(
     @SerializedName("bidNtceOrd") val bidNtceOrd: String?,
     @SerializedName("bidNtceNm") val bidNtceNm: String?,
     @SerializedName("ntceInsttNm") val ntceInsttNm: String?,
-    @SerializedName("dmInsttNm") val dmInsttNm: String?,
-    @SerializedName("opengDt") val opengDt: String?,          // 개찰일시 (yyyyMMddHHmm)
-    @SerializedName("scsbidNm") val scsbidNm: String?,         // 낙찰업체명
-    @SerializedName("scsbidAmt") val scsbidAmt: String?,       // 낙찰금액 (원)
+    @SerializedName("dminsttNm") val dminsttNm: String?,
+    @SerializedName("rlOpengDt") val rlOpengDt: String?,       // 개찰일시 (yyyyMMddHHmm)
+    @SerializedName("bidwinnrNm") val bidwinnrNm: String?,     // 낙찰업체명
+    @SerializedName("sucsfbidAmt") val sucsfbidAmt: String?,   // 낙찰금액 (원)
     @SerializedName("presmptPrce") val presmptPrce: String?,   // 추정가격 (원)
     @SerializedName("bdgtAmt") val bdgtAmt: String?,           // 예산금액 (원)
     @SerializedName("sucsfbidRate") val sucsfbidRate: String?, // 낙찰율 (%)
