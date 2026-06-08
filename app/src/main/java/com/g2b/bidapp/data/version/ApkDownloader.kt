@@ -1,11 +1,13 @@
 package com.g2b.bidapp.data.version
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -106,31 +108,58 @@ class ApkDownloader @Inject constructor(
 
     /**
      * 다운로드된 APK 파일을 설치한다.
-     * 설치 권한이 없으면 설정 화면으로 안내하고 false 를 반환한다.
-     * 설치 Intent 를 실행했으면 true 를 반환한다.
+     * - 설치 권한 없음 → 설정 화면으로 안내 후 InstallResult.PermissionRequired 반환
+     * - 설치 Intent 실행 성공 → InstallResult.Success 반환
+     * - 예외 발생 → InstallResult.Failure 반환 (앱 크래시 방지)
      */
-    fun installApk(apkFile: File): Boolean {
+    fun installApk(apkFile: File): InstallResult {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
-                val settingsIntent = Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:${context.packageName}"),
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                context.startActivity(settingsIntent)
-                return false
+                return try {
+                    val settingsIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}"),
+                    ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    context.startActivity(settingsIntent)
+                    InstallResult.PermissionRequired
+                } catch (e: Exception) {
+                    Log.e("ApkDownloader", "설정 화면 열기 실패", e)
+                    InstallResult.Failure("설정 화면을 열 수 없습니다: ${e.message}")
+                }
             }
         }
 
-        val authority = "${context.packageName}.fileprovider"
-        val apkUri: Uri = FileProvider.getUriForFile(context, authority, apkFile)
+        return try {
+            if (!apkFile.exists()) {
+                return InstallResult.Failure("APK 파일을 찾을 수 없습니다")
+            }
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val authority = "${context.packageName}.fileprovider"
+            val apkUri: Uri = FileProvider.getUriForFile(context, authority, apkFile)
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            InstallResult.Success
+        } catch (e: ActivityNotFoundException) {
+            Log.e("ApkDownloader", "APK 설치 앱 없음", e)
+            InstallResult.Failure("APK를 설치할 수 있는 앱이 없습니다")
+        } catch (e: IllegalArgumentException) {
+            Log.e("ApkDownloader", "FileProvider 경로 오류", e)
+            InstallResult.Failure("파일 경로 오류: ${e.message}")
+        } catch (e: Exception) {
+            Log.e("ApkDownloader", "APK 설치 실패", e)
+            InstallResult.Failure("설치 실패: ${e.message}")
         }
-        context.startActivity(intent)
-        return true
+    }
+
+    sealed interface InstallResult {
+        data object Success : InstallResult
+        data object PermissionRequired : InstallResult
+        data class Failure(val message: String) : InstallResult
     }
 
     private fun getDestinationFile(): File {

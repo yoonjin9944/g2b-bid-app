@@ -3,6 +3,7 @@ package com.g2b.bidapp.ui.splash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g2b.bidapp.data.version.ApkDownloader
+import com.g2b.bidapp.data.version.ApkDownloader.InstallResult
 import com.g2b.bidapp.data.version.DownloadState
 import com.g2b.bidapp.data.version.VersionCheckRepository
 import com.g2b.bidapp.domain.model.VersionCheckResult
@@ -118,10 +119,15 @@ class SplashViewModel @Inject constructor(
 
                     is DownloadState.Done -> {
                         pendingInstallFile = state.file
-                        apkDownloader.installApk(state.file)
-                        // installApk 가 false 를 반환하면 설정 화면으로 이동한 것
-                        // → onResume() 에서 권한 확인 후 재시도
                         isDownloading = false
+                        when (val result = apkDownloader.installApk(state.file)) {
+                            is InstallResult.Success -> Unit          // 설치 화면으로 넘어감
+                            is InstallResult.PermissionRequired -> Unit // 설정 화면으로 이동 — onResume 에서 재시도
+                            is InstallResult.Failure -> {
+                                pendingInstallFile = null
+                                _uiState.value = SplashUiState.Error(result.message)
+                            }
+                        }
                     }
 
                     is DownloadState.Failure -> {
@@ -136,9 +142,15 @@ class SplashViewModel @Inject constructor(
     // SplashScreen 이 Resume 될 때 호출 — 설정 화면에서 허용 후 돌아온 경우 설치 재시도
     fun onResume() {
         val file = pendingInstallFile ?: return
-        if (apkDownloader.canInstall()) {
-            apkDownloader.installApk(file)
-            pendingInstallFile = null
+        if (!apkDownloader.canInstall()) return
+
+        when (val result = apkDownloader.installApk(file)) {
+            is InstallResult.Success -> pendingInstallFile = null
+            is InstallResult.PermissionRequired -> Unit  // 아직 권한 없음 — 대기
+            is InstallResult.Failure -> {
+                pendingInstallFile = null
+                _uiState.value = SplashUiState.Error(result.message)
+            }
         }
     }
 
