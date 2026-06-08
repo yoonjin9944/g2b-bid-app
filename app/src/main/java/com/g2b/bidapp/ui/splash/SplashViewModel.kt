@@ -26,6 +26,9 @@ sealed interface SplashUiState {
 
     data class Downloading(val progress: Float) : SplashUiState
 
+    // 다운로드 완료, 설치 대기 중 (권한 요청 중이거나 설치 취소 후 재시도 가능 상태)
+    data object ReadyToInstall : SplashUiState
+
     data class RecommendUpdate(
         val downloadUrl: String,
         val releaseNotes: String,
@@ -120,8 +123,10 @@ class SplashViewModel @Inject constructor(
                     is DownloadState.Done -> {
                         pendingInstallFile = state.file
                         isDownloading = false
+                        // 다운로드 완료 → 즉시 ReadyToInstall 로 전환 (Downloading 에서 벗어남)
+                        _uiState.value = SplashUiState.ReadyToInstall
                         when (val result = apkDownloader.installApk(state.file)) {
-                            is InstallResult.Success -> Unit          // 설치 화면으로 넘어감
+                            is InstallResult.Success -> Unit          // 설치 다이얼로그가 위에 뜸, 상태 유지
                             is InstallResult.PermissionRequired -> Unit // 설정 화면으로 이동 — onResume 에서 재시도
                             is InstallResult.Failure -> {
                                 pendingInstallFile = null
@@ -142,11 +147,40 @@ class SplashViewModel @Inject constructor(
     // SplashScreen 이 Resume 될 때 호출 — 설정 화면에서 허용 후 돌아온 경우 설치 재시도
     fun onResume() {
         val file = pendingInstallFile ?: return
-        if (!apkDownloader.canInstall()) return
-
+        if (!apkDownloader.canInstall()) {
+            // 권한 아직 없음 — ReadyToInstall 상태 유지 (설치하기 버튼 노출)
+            _uiState.value = SplashUiState.ReadyToInstall
+            return
+        }
         when (val result = apkDownloader.installApk(file)) {
-            is InstallResult.Success -> pendingInstallFile = null
-            is InstallResult.PermissionRequired -> Unit  // 아직 권한 없음 — 대기
+            // Success = 설치 다이얼로그가 위에 뜬 것 — pendingInstallFile 유지 (설치 취소 시 재시도 가능)
+            is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
+            is InstallResult.PermissionRequired -> _uiState.value = SplashUiState.ReadyToInstall
+            is InstallResult.Failure -> {
+                pendingInstallFile = null
+                _uiState.value = SplashUiState.Error(result.message)
+            }
+        }
+    }
+
+    // 설치하기 버튼 클릭 시 호출
+    fun retryInstall() {
+        val file = pendingInstallFile ?: return
+        if (!apkDownloader.canInstall()) {
+            // 권한 없으면 설정 화면으로 — installApk 내부에서 처리
+            when (val result = apkDownloader.installApk(file)) {
+                is InstallResult.PermissionRequired -> Unit
+                is InstallResult.Failure -> {
+                    pendingInstallFile = null
+                    _uiState.value = SplashUiState.Error(result.message)
+                }
+                is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
+            }
+            return
+        }
+        when (val result = apkDownloader.installApk(file)) {
+            is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
+            is InstallResult.PermissionRequired -> _uiState.value = SplashUiState.ReadyToInstall
             is InstallResult.Failure -> {
                 pendingInstallFile = null
                 _uiState.value = SplashUiState.Error(result.message)

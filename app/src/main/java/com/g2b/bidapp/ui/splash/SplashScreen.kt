@@ -76,6 +76,7 @@ fun SplashScreen(
     val showSpinner = when (uiState) {
         is SplashUiState.ForceUpdate,
         is SplashUiState.Downloading,
+        is SplashUiState.ReadyToInstall,
         is SplashUiState.RecommendUpdate -> false
         else -> true
     }
@@ -97,6 +98,11 @@ fun SplashScreen(
 
         is SplashUiState.Downloading ->
             DownloadProgressDialog(progress = state.progress)
+
+        is SplashUiState.ReadyToInstall ->
+            ReadyToInstallDialog(
+                onInstall = { viewModel.retryInstall() }
+            )
 
         is SplashUiState.RecommendUpdate ->
             RecommendUpdateDialog(
@@ -234,6 +240,49 @@ private fun DownloadProgressDialog(progress: Float) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadyToInstallDialog(
+    onInstall: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "다운로드 완료",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "설치 화면에서 설치를 완료해 주세요.\n설치를 취소한 경우 아래 버튼을 눌러주세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Button(
+                    onClick = onInstall,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                ) {
+                    Text("설치하기")
                 }
             }
         }
