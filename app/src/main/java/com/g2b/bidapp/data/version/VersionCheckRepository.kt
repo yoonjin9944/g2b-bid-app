@@ -18,9 +18,8 @@ open class VersionCheckRepository @Inject constructor(
     private val okHttpClient: OkHttpClient,
 ) {
 
-    // TODO: 실제 GitHub Pages URL 로 교체
     protected open val versionJsonUrl: String =
-        "https://{owner}.github.io/{repo}/version.json"
+        "https://yoonjin9944.github.io/g2b-bid-app/version.json"
 
     protected open val currentVersion: String
         get() = BuildConfig.VERSION_NAME // 호출할 때마다 값을 확인
