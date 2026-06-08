@@ -1,6 +1,9 @@
 package com.g2b.bidapp.data.repository
 
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.g2b.bidapp.data.service.G2bFirebaseMessagingService.Companion.KEY_PENDING_FCM_TOKEN
 import com.g2b.bidapp.domain.model.User
 import com.g2b.bidapp.domain.repository.AuthRepository
 import com.google.firebase.messaging.FirebaseMessaging
@@ -22,6 +25,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val auth: Auth,
     private val postgrest: Postgrest,
     private val authRedirectFlow: MutableSharedFlow<String>,
+    private val dataStore: DataStore<Preferences>,
 ) : AuthRepository {
 
     override suspend fun signInWithGoogleIdToken(idToken: String): Result<User> = runCatching {
@@ -30,17 +34,21 @@ class AuthRepositoryImpl @Inject constructor(
             this.provider = Google
         }
 
-        val supabaseUser = auth.currentUserOrNull()
-            ?: error("Supabase 사용자 정보를 가져올 수 없습니다")
+//        val supabaseUser = auth.currentUserOrNull()
+//            ?: error("Supabase 사용자 정보를 가져올 수 없습니다")
+        val supabaseUser = auth.retrieveUserForCurrentSession(updateSession = true)
+        Log.d("AuthRepository", "서버 유저 정보 동기화 완벽 완료: ${supabaseUser.id}")
 
         // [수정] 클라이언트 측 postgrest.from("users").upsert 로직을 완전히 제거했습니다.
         // 데이터베이스의 AFTER INSERT 트리거가 public.users 테이블 적재를 자동으로 처리합니다.
 
         try {
-            val token = FirebaseMessaging.getInstance().token.await()
+            // DataStore에 임시 저장된 토큰 우선 사용, 없으면 Firebase에서 직접 조회
+            val token = dataStore.data.first()[KEY_PENDING_FCM_TOKEN]
+                ?: FirebaseMessaging.getInstance().token.await()
             upsertFcmToken(supabaseUser.id, token)
-        } catch (_: Exception) {
-
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "upsertFcmToken 실패", e)
         }
 
         User(
@@ -90,6 +98,7 @@ class AuthRepositoryImpl @Inject constructor(
                 onConflict = "fcm_token"
                 ignoreDuplicates = false
             }
+        Log.d("upsertFcmToken", "upsertFcmToken 호출 | userId=$userId | token=${fcmToken.take(20)}")
     }
 
     override suspend fun signInWithKakao(): Result<Unit> = runCatching {
@@ -139,10 +148,12 @@ class AuthRepositoryImpl @Inject constructor(
                 Log.d("AuthRepository", "서버 유저 정보 동기화 완벽 완료: ${supabaseUser.id}")
 
                 try {
-                    val token = FirebaseMessaging.getInstance().token.await()
+                    // DataStore에 임시 저장된 토큰 우선 사용, 없으면 Firebase에서 직접 조회
+                    val token = dataStore.data.first()[KEY_PENDING_FCM_TOKEN]
+                        ?: FirebaseMessaging.getInstance().token.await()
                     upsertFcmToken(supabaseUser.id, token)
-                } catch (_: Exception) {
-
+                } catch (e: Exception) {
+                    Log.e("AuthRepository", "upsertFcmToken 실패 (카카오)", e)
                 }
 
                 Unit

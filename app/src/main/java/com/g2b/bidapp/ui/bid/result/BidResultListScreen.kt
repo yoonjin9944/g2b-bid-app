@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -154,7 +155,7 @@ private fun BidResultContent(
             )
         }
 
-        pagingItems.itemCount == 0 -> {
+        pagingItems.itemCount == 0 && pagingItems.loadState.append.endOfPaginationReached -> {
             EmptyView(
                 message = "낙찰결과가 없습니다",
                 subMessage = "최근 90일 이내의 낙찰결과가 표시됩니다",
@@ -222,7 +223,7 @@ private fun BidResultCard(
                     color = Color(0xFF737780),
                 )
                 Text(
-                    text = result.opengDt?.toDisplayDateTime() ?: "-",
+                    text = result.rlOpengDt?.toDisplayDateTime() ?: "-",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF737780),
                 )
@@ -245,7 +246,7 @@ private fun BidResultCard(
             Spacer(Modifier.height(6.dp))
 
             Text(
-                text = result.ntceInsttNm ?: "-",
+                text = result.dminsttNm ?: "-",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF64748B),
             )
@@ -266,7 +267,7 @@ private fun BidResultCard(
                         color = Color(0xFF94A3B8),
                     )
                     Text(
-                        text = result.scsbidNm ?: "-",
+                        text = result.bidwinnrNm ?: "-",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = Color(0xFF0B1C30),
                         maxLines = 1,
@@ -280,7 +281,7 @@ private fun BidResultCard(
                         color = Color(0xFF94A3B8),
                     )
                     Text(
-                        text = result.scsbidAmt?.toPriceLabel() ?: "-",
+                        text = result.sucsfbidAmt?.toPriceLabel() ?: "-",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = NavyBlue,
@@ -302,3 +303,28 @@ private fun BidResultCard(
     }
 }
 
+private fun sampleResult() = BidResult(
+    bidNtceNo = "sampleNo",
+    bidNtceOrd = "sampleOrd",
+    bidNtceNm = "smapleBidNtceNm",
+    ntceInsttNm = "sampleNtceInsttNm",
+    dminsttNm = "dminsttNm",
+    rlOpengDt = "",       // 개찰일시 (yyyyMMddHHmm)
+    bidwinnrNm = "",      // 낙찰업체명
+    sucsfbidAmt = null,       // 낙찰금액 (원)
+    presmptPrce = null,     // 추정가격 (원)
+    bdgtAmt = null,         // 예산금액 (원)
+    sucsfbidRate = null,  // 낙찰율 (%)
+    bidCategory = BidCategory.CNSTWK,
+    bidNtceDtlUrl = null,
+)
+
+@Composable
+@Preview(showBackground = true)
+private fun BidResultCardPreview() {
+    BidResultCard(
+        result = sampleResult(),
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+}

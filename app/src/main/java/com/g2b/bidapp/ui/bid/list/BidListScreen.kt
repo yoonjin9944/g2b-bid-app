@@ -176,9 +176,9 @@ private fun BidListTopAppBar(
                     tint = if (hasActiveFilter) NavyBlue else Color(0xFF94A3B8),
                 )
             }
-            IconButton(onClick = {}) {
-                Icon(Icons.Outlined.Notifications, contentDescription = "알림", tint = Color(0xFF94A3B8))
-            }
+//            IconButton(onClick = {}) {
+//                Icon(Icons.Outlined.Notifications, contentDescription = "알림", tint = Color(0xFF94A3B8))
+//            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color(0xFFF8FAFC),

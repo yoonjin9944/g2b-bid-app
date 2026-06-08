@@ -6,10 +6,10 @@ data class BidResult(
     val bidNtceOrd: String,
     val bidNtceNm: String,
     val ntceInsttNm: String?,
-    val dmInsttNm: String?,
-    val opengDt: String?,       // 개찰일시 (yyyyMMddHHmm)
-    val scsbidNm: String?,      // 낙찰업체명
-    val scsbidAmt: Long?,       // 낙찰금액 (원)
+    val dminsttNm: String?,
+    val rlOpengDt: String?,       // 개찰일시 (yyyyMMddHHmm)
+    val bidwinnrNm: String?,      // 낙찰업체명
+    val sucsfbidAmt: Long?,       // 낙찰금액 (원)
     val presmptPrce: Long?,     // 추정가격 (원)
     val bdgtAmt: Long?,         // 예산금액 (원)
     val sucsfbidRate: String?,  // 낙찰율 (%)

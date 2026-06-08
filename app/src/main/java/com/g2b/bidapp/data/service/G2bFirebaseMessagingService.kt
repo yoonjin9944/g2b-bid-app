@@ -5,10 +5,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.g2b.bidapp.MainActivity
 import com.g2b.bidapp.R
 import com.g2b.bidapp.data.local.dao.NotificationDao
@@ -69,9 +72,11 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
+        // 로그인 전에 onNewToken이 호출될 수 있으므로 DB에 직접 쓰지 않고
+        // DataStore에 임시 저장 후 로그인 완료 시점에 올바른 user_id와 함께 upsert
         CoroutineScope(Dispatchers.IO).launch {
-            val user = authRepository.getCurrentUser() ?: return@launch
-            authRepository.upsertFcmToken(user.id, token)
+            Log.d("FCM", "onNewToken 호출 | token=${token.take(20)} | DataStore에 임시 저장")
+            dataStore.edit { it[KEY_PENDING_FCM_TOKEN] = token }
         }
     }
 
@@ -115,5 +120,6 @@ class G2bFirebaseMessagingService : FirebaseMessagingService() {
         val KEY_NOTIFY_CHANGED = booleanPreferencesKey("notify_changed")
         val KEY_NOTIFY_CANCELLED = booleanPreferencesKey("notify_cancelled")
         val KEY_NOTIFY_OPENED = booleanPreferencesKey("notify_opened")
+        val KEY_PENDING_FCM_TOKEN = stringPreferencesKey("pending_fcm_token")
     }
 }
