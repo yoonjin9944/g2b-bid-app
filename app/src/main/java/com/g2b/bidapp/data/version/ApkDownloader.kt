@@ -18,6 +18,7 @@ import okio.buffer
 import okio.sink
 import java.io.File
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 sealed interface DownloadState {
@@ -29,7 +30,7 @@ sealed interface DownloadState {
 @Singleton
 class ApkDownloader @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val okHttpClient: OkHttpClient,
+    @Named("downloadClient") private val okHttpClient: OkHttpClient,
 ) {
     companion object {
         private const val APK_FILE_NAME = "app-update.apk"

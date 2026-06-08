@@ -1,6 +1,6 @@
-# 나라장터 입찰공고 모니터링
+# 나라장터 모니터링
 
-SI개발업체 영업팀을 위한 조달청 나라장터 입찰공고 모니터링 Android 앱
+SI개발업체 영업팀을 위한 조달청 나라장터 모니터링 Android 앱
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-4285F4?style=flat&logo=jetpackcompose&logoColor=white)

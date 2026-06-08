@@ -126,7 +126,7 @@ private fun SplashBackground(showSpinner: Boolean) {
                 modifier = Modifier.size(120.dp)
             )
             Text(
-                text = "입찰공고 모니터링",
+                text = "나라장터 모니터링",
                 color = Color.White.copy(alpha = 0.8f),
                 fontSize = 16.sp,
             )

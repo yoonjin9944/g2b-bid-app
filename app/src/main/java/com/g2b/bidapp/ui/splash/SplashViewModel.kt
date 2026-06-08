@@ -57,6 +57,9 @@ class SplashViewModel @Inject constructor(
     // 설정 화면에서 돌아왔을 때 재시도할 파일 보관
     private var pendingInstallFile: File? = null
 
+    // 다운로드 중복 실행 방지
+    private var isDownloading = false
+
     init {
         startVersionCheck()
     }
@@ -103,6 +106,10 @@ class SplashViewModel @Inject constructor(
     }
 
     private fun startDownload(downloadUrl: String) {
+        if (isDownloading) return  // 중복 실행 방지
+        isDownloading = true
+        _uiState.value = SplashUiState.Downloading(0f)  // 즉시 상태 전환 → 버튼 중복 클릭 차단
+
         viewModelScope.launch {
             apkDownloader.downloadApk(downloadUrl).collect { state ->
                 when (state) {
@@ -114,10 +121,13 @@ class SplashViewModel @Inject constructor(
                         apkDownloader.installApk(state.file)
                         // installApk 가 false 를 반환하면 설정 화면으로 이동한 것
                         // → onResume() 에서 권한 확인 후 재시도
+                        isDownloading = false
                     }
 
-                    is DownloadState.Failure ->
+                    is DownloadState.Failure -> {
                         _uiState.value = SplashUiState.Error(state.message)
+                        isDownloading = false
+                    }
                 }
             }
         }

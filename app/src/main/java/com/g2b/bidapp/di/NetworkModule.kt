@@ -124,6 +124,15 @@ object NetworkModule {
         .addNetworkInterceptor(loggingInterceptor)
         .build()
 
+    // APK 다운로드 전용 — AuthInterceptor, RetryInterceptor 없는 클린 클라이언트
+    @Provides
+    @Singleton
+    @Named("downloadClient")
+    fun provideDownloadOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15L, TimeUnit.SECONDS)
+        .readTimeout(5L, TimeUnit.MINUTES)  // APK 다운로드는 시간이 걸릴 수 있으므로 충분히 설정
+        .build()
+
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit =

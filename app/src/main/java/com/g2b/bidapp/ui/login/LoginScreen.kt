@@ -119,7 +119,7 @@ private fun LoginContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "나라장터 입찰공고 모니터링",
+                text = "나라장터 모니터링",
                 style = MaterialTheme.typography.titleLarge,
                 color = NavyBlue,
                 fontWeight = FontWeight.Bold,
