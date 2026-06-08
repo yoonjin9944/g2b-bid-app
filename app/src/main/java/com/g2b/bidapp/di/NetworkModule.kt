@@ -131,6 +131,16 @@ object NetworkModule {
     fun provideDownloadOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15L, TimeUnit.SECONDS)
         .readTimeout(5L, TimeUnit.MINUTES)  // APK 다운로드는 시간이 걸릴 수 있으므로 충분히 설정
+        .followRedirects(true)              // GitHub Releases → CDN 리다이렉트 자동 추적
+        .followSslRedirects(true)
+        .addInterceptor { chain ->
+            // GitHub CDN은 브라우저 User-Agent 없으면 504/403 반환할 수 있음
+            val request = chain.request().newBuilder()
+                .header("User-Agent", "Mozilla/5.0 (Android)")
+                .header("Accept", "application/octet-stream")
+                .build()
+            chain.proceed(request)
+        }
         .build()
 
     @Provides
