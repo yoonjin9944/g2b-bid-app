@@ -1,9 +1,7 @@
 package com.g2b.bidapp.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -30,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,20 +38,11 @@ import com.g2b.bidapp.domain.model.BidNotice
 import com.g2b.bidapp.domain.model.BidStatus
 import com.g2b.bidapp.ui.theme.BidNoticeColor
 import com.g2b.bidapp.ui.theme.NavyBlue
-import com.g2b.bidapp.ui.theme.StatusCancelled
 import com.g2b.bidapp.util.parseG2bDateTime
 import com.g2b.bidapp.util.toDisplayDateTime
 import com.g2b.bidapp.util.toPriceLabel
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
-
-private enum class BidLifecycleStage {
-    BIDDING,        // 투찰 진행 중 (now < bidClseDt)
-    BIDDING_URGENT, // 마감임박 (3일 이하)
-    AWAITING_OPEN,  // 개찰 대기 (bidClseDt <= now < opengDt)
-    OPENED,         // 개찰일 경과
-    UNKNOWN,        // 날짜 정보 없음
-}
 
 @Composable
 fun BidNoticeCard(
@@ -86,9 +73,12 @@ fun BidNoticeCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // 배지 + 공고번호 영역: 북마크 버튼 제외한 나머지 공간을 모두 사용
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     val noticeStatus = remember(notice.ntceKindNm) {
                         BidStatus.fromNtceKindNm(notice.ntceKindNm)
                     }
@@ -96,26 +86,27 @@ fun BidNoticeCard(
                     val isFinalResult = noticeStatus == BidStatus.FAILED_BID ||
                                        noticeStatus == BidStatus.AWARDED
                     if (!isFinalResult) {
-                        StatusBadge(
-                            label = stage.label(),
-                            containerColor = stage.containerColor(),
-                            contentColor = stage.contentColor(),
-                        )
+                        LifecycleStageBadge(stage = stage)
                     }
                     // REGISTERED(기본), OPENED, BID_CLOSED는 LifecycleStageBadge가 이미 표현
-                    // FAILED_BID, AWARDED: 위에서 LifecycleStageBadge를 숨겼으므로 단독 표시
-                    if (noticeStatus != BidStatus.REGISTERED &&
+                    // 재공고·변경·취소: LifecycleStageBadge 뒤에 추가 배지 표시
+                    // FAILED_BID·AWARDED: LifecycleStageBadge 숨기고 단독 표시 (Spacer 없음)
+                    val showStatusBadge = noticeStatus != BidStatus.REGISTERED &&
                         noticeStatus != BidStatus.OPENED &&
-                        noticeStatus != BidStatus.BID_CLOSED) {
-                        Spacer(Modifier.width(6.dp))
+                        noticeStatus != BidStatus.BID_CLOSED
+                    if (showStatusBadge) {
+                        if (!isFinalResult) Spacer(Modifier.width(6.dp))
                         BidStatusBadge(status = noticeStatus)
                     }
                     Spacer(Modifier.width(8.dp))
+                    // 배지 영역 이후 남은 공간을 차지하며, 공간 부족 시 말줄임 처리
                     Text(
                         text = "공고번호: ${notice.bidNtceNo}-${notice.bidNtceOrd}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF737780),
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
                     )
                 }
                 IconButton(onClick = onWatchlistToggle, modifier = Modifier.size(32.dp)) {
@@ -194,9 +185,9 @@ fun BidNoticeCard(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = when (stage) {
-                            BidLifecycleStage.UNKNOWN -> ""
+                            BidLifecycleStage.UNKNOWN       -> ""
                             BidLifecycleStage.AWAITING_OPEN -> "개찰 대기"
-                            BidLifecycleStage.OPENED -> "개찰"
+                            BidLifecycleStage.OPENED        -> "개찰"
                             else -> if (daysRemaining != null && daysRemaining >= 0) "D-$daysRemaining" else "마감"
                         },
                         style = MaterialTheme.typography.labelSmall.copy(
@@ -217,50 +208,7 @@ fun BidNoticeCard(
     }
 }
 
-@Composable
-private fun StatusBadge(
-    label: String,
-    containerColor: Color,
-    contentColor: Color,
-) {
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(containerColor)
-            .padding(horizontal = 10.dp, vertical = 3.dp),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = 0.6.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            color = contentColor,
-        )
-    }
-}
-
-@Composable
-private fun DeadlineProgressBar(stage: BidLifecycleStage, fraction: Float) {
-    val isPostBid = stage == BidLifecycleStage.AWAITING_OPEN || stage == BidLifecycleStage.OPENED
-    val barColor = if (isPostBid) Color(0xFF94A3B8) else stage.barColor()
-    val barFraction = if (isPostBid) 1f else fraction
-    Box(
-        modifier = Modifier
-            .width(80.dp)
-            .height(8.dp)
-            .clip(CircleShape)
-            .background(Color(0xFFDCE9FF)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(barFraction)
-                .height(8.dp)
-                .clip(CircleShape)
-                .background(barColor),
-        )
-    }
-}
+// ─── BidNotice 전용 헬퍼 ─────────────────────────────────────────────────────
 
 // 날짜 세 필드(bidNtceDt, bidClseDt, opengDt)를 조합해 현재 라이프사이클 단계를 판단
 private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
@@ -273,14 +221,11 @@ private fun BidNotice.resolveLifecycleStage(): BidLifecycleStage {
             if (days <= 3) BidLifecycleStage.BIDDING_URGENT else BidLifecycleStage.BIDDING
         }
         openg != null && now < openg -> BidLifecycleStage.AWAITING_OPEN
-        openg != null -> BidLifecycleStage.OPENED
-        else -> BidLifecycleStage.AWAITING_OPEN  // opengDt 없으면 개찰 대기로 표시
+        openg != null                -> BidLifecycleStage.OPENED
+        else                         -> BidLifecycleStage.AWAITING_OPEN
     }
 }
 
-// 마감까지 남은 일수 기준 경과 비율 (0f ~ 1f)
-// 만점 기준 = DEADLINE_FULL_DAYS일 → D-0이면 1f, D-30이상이면 0f
-// 공고 기간과 무관하게 동일한 D-day면 동일한 비율 표시
 private fun BidNotice.lifetimeFraction(): Float {
     val end = bidClseDt?.parseG2bDateTime() ?: return 0f
     val now = LocalDateTime.now()
@@ -294,39 +239,7 @@ private fun BidNotice.daysRemaining(): Int? {
     return ChronoUnit.DAYS.between(LocalDateTime.now(), clse).toInt()
 }
 
-private fun BidLifecycleStage.label() = when (this) {
-    BidLifecycleStage.BIDDING -> "투찰중"
-    BidLifecycleStage.BIDDING_URGENT -> "마감임박"
-    BidLifecycleStage.AWAITING_OPEN -> "개찰 대기"
-    BidLifecycleStage.OPENED -> "개찰"
-    BidLifecycleStage.UNKNOWN -> "공고중"
-}
-
-private fun BidLifecycleStage.containerColor() = when (this) {
-    BidLifecycleStage.BIDDING, BidLifecycleStage.UNKNOWN -> Color(0xFF001E40)
-    BidLifecycleStage.BIDDING_URGENT -> Color(0xFFFFDAD6)
-    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFFECEFF1)
-}
-
-private fun BidLifecycleStage.contentColor() = when (this) {
-    BidLifecycleStage.BIDDING, BidLifecycleStage.UNKNOWN -> Color(0xFF799DD6)
-    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
-    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFF6E7680)
-}
-
-private fun BidLifecycleStage.textColor() = when (this) {
-    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
-    BidLifecycleStage.AWAITING_OPEN, BidLifecycleStage.OPENED -> Color(0xFF6E7680)
-    else -> Color(0xFF0060AC)
-}
-
-private fun BidLifecycleStage.barColor() = when (this) {
-    BidLifecycleStage.BIDDING_URGENT -> StatusCancelled
-    else -> Color(0xFF0060AC)
-}
-
-// 프로그레스바 만점 기준: 30일 이상 남으면 0%, 마감이면 100%
-private const val DEADLINE_FULL_DAYS = 15f
+// ─── Preview ─────────────────────────────────────────────────────────────────
 
 private fun sampleBidNotice() = BidNotice(
     bidNtceNo = "20240001234",

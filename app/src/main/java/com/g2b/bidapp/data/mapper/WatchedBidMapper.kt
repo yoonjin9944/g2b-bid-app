@@ -31,7 +31,8 @@ fun BidNotice.toWatchedBidEntity(
     presmptPrce = presmptPrce,
     bdgtAmt = bdgtAmt,
     bidCategory = bidCategory.apiCode,
-    currentStatus = BidStatus.REGISTERED.name,
+    // ntceKindNm("재공고", "변경", "취소" 등)을 그대로 반영 — REGISTERED가 기본값
+    currentStatus = BidStatus.fromNtceKindNm(ntceKindNm).name,
     bidNtceDtlUrl = bidNtceDtlUrl,
     watchedAt = watchedAt,
     syncedAt = null,
