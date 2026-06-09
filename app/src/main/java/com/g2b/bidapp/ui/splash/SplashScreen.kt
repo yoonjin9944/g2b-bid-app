@@ -56,6 +56,7 @@ fun SplashScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
+            android.util.Log.d("SplashScreen", "Lifecycle event: $event")
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.onResume()
             }
@@ -77,7 +78,8 @@ fun SplashScreen(
         is SplashUiState.ForceUpdate,
         is SplashUiState.Downloading,
         is SplashUiState.ReadyToInstall,
-        is SplashUiState.RecommendUpdate -> false
+        is SplashUiState.RecommendUpdate,
+        is SplashUiState.VersionCheckError -> false
         else -> true
     }
     SplashBackground(showSpinner = showSpinner)
@@ -89,6 +91,12 @@ fun SplashScreen(
         is SplashUiState.NavigateToLogin,
         is SplashUiState.NavigateToMain,
         is SplashUiState.NavigateToDetail -> Unit
+
+        is SplashUiState.VersionCheckError ->
+            VersionCheckErrorDialog(
+                message = state.message,
+                onDismiss = { viewModel.onVersionCheckErrorDismissed() },
+            )
 
         is SplashUiState.ForceUpdate ->
             ForceUpdateDialog(
@@ -244,6 +252,35 @@ private fun DownloadProgressDialog(progress: Float) {
             }
         }
     }
+}
+
+@Composable
+private fun VersionCheckErrorDialog(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "업데이트 확인 실패", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("업데이트 서버에 연결할 수 없습니다.")
+                Text(
+                    text = "오류: $message",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+            ) {
+                Text("건너뛰기")
+            }
+        },
+    )
 }
 
 @Composable

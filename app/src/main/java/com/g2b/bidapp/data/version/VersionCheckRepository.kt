@@ -11,11 +11,12 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Singleton
 open class VersionCheckRepository @Inject constructor(
-    private val okHttpClient: OkHttpClient,
+    @Named("downloadClient") private val okHttpClient: OkHttpClient,
 ) {
 
     protected open val versionJsonUrl: String =

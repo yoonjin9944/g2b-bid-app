@@ -38,6 +38,9 @@ sealed interface SplashUiState {
 
     data class Error(val message: String) : SplashUiState
 
+    // 버전 체크 자체 실패 (네트워크 오류 등) — 건너뛰기 버튼으로 계속 진행 가능
+    data class VersionCheckError(val message: String) : SplashUiState
+
     data object NavigateToLogin : SplashUiState
 
     data object NavigateToMain : SplashUiState
@@ -80,6 +83,11 @@ class SplashViewModel @Inject constructor(
         checkSession()
     }
 
+    // 버전 체크 실패 다이얼로그에서 "건너뛰기" 클릭 시
+    fun onVersionCheckErrorDismissed() {
+        checkSession()
+    }
+
     private fun startVersionCheck() {
         viewModelScope.launch {
             _uiState.value = SplashUiState.Loading
@@ -102,8 +110,9 @@ class SplashViewModel @Inject constructor(
                 }
 
                 is VersionCheckResult.Error -> {
-                    _uiState.value = SplashUiState.Error(result.message)
-                    checkSession()
+                    // 버전 체크 실패 시 에러를 화면에 표시 (조용히 넘어가지 않음)
+                    android.util.Log.e("SplashVM", "버전 체크 실패: ${result.message}")
+                    _uiState.value = SplashUiState.VersionCheckError(result.message)
                 }
             }
         }
@@ -146,17 +155,29 @@ class SplashViewModel @Inject constructor(
 
     // SplashScreen 이 Resume 될 때 호출 — 설정 화면에서 허용 후 돌아온 경우 설치 재시도
     fun onResume() {
-        val file = pendingInstallFile ?: return
+        val file = pendingInstallFile
+        android.util.Log.d("SplashVM", "onResume() | pendingInstallFile=${file?.absolutePath} | canInstall=${apkDownloader.canInstall()}")
+        if (file == null) {
+            android.util.Log.d("SplashVM", "onResume() → pendingInstallFile null, skip")
+            return
+        }
         if (!apkDownloader.canInstall()) {
-            // 권한 아직 없음 — ReadyToInstall 상태 유지 (설치하기 버튼 노출)
+            android.util.Log.d("SplashVM", "onResume() → 권한 없음, ReadyToInstall 유지")
             _uiState.value = SplashUiState.ReadyToInstall
             return
         }
+        android.util.Log.d("SplashVM", "onResume() → installApk 호출")
         when (val result = apkDownloader.installApk(file)) {
-            // Success = 설치 다이얼로그가 위에 뜬 것 — pendingInstallFile 유지 (설치 취소 시 재시도 가능)
-            is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
-            is InstallResult.PermissionRequired -> _uiState.value = SplashUiState.ReadyToInstall
+            is InstallResult.Success -> {
+                android.util.Log.d("SplashVM", "onResume() → installApk Success")
+                _uiState.value = SplashUiState.ReadyToInstall
+            }
+            is InstallResult.PermissionRequired -> {
+                android.util.Log.d("SplashVM", "onResume() → installApk PermissionRequired (설정 화면 재오픈)")
+                _uiState.value = SplashUiState.ReadyToInstall
+            }
             is InstallResult.Failure -> {
+                android.util.Log.e("SplashVM", "onResume() → installApk Failure: ${result.message}")
                 pendingInstallFile = null
                 _uiState.value = SplashUiState.Error(result.message)
             }
@@ -165,23 +186,20 @@ class SplashViewModel @Inject constructor(
 
     // 설치하기 버튼 클릭 시 호출
     fun retryInstall() {
-        val file = pendingInstallFile ?: return
-        if (!apkDownloader.canInstall()) {
-            // 권한 없으면 설정 화면으로 — installApk 내부에서 처리
-            when (val result = apkDownloader.installApk(file)) {
-                is InstallResult.PermissionRequired -> Unit
-                is InstallResult.Failure -> {
-                    pendingInstallFile = null
-                    _uiState.value = SplashUiState.Error(result.message)
-                }
-                is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
-            }
-            return
-        }
+        val file = pendingInstallFile
+        android.util.Log.d("SplashVM", "retryInstall() | pendingInstallFile=${file?.absolutePath} | canInstall=${apkDownloader.canInstall()}")
+        if (file == null) return
         when (val result = apkDownloader.installApk(file)) {
-            is InstallResult.Success -> _uiState.value = SplashUiState.ReadyToInstall
-            is InstallResult.PermissionRequired -> _uiState.value = SplashUiState.ReadyToInstall
+            is InstallResult.Success -> {
+                android.util.Log.d("SplashVM", "retryInstall() → Success")
+                _uiState.value = SplashUiState.ReadyToInstall
+            }
+            is InstallResult.PermissionRequired -> {
+                android.util.Log.d("SplashVM", "retryInstall() → PermissionRequired (설정 화면으로)")
+                _uiState.value = SplashUiState.ReadyToInstall
+            }
             is InstallResult.Failure -> {
+                android.util.Log.e("SplashVM", "retryInstall() → Failure: ${result.message}")
                 pendingInstallFile = null
                 _uiState.value = SplashUiState.Error(result.message)
             }

@@ -113,14 +113,19 @@ class ApkDownloader @Inject constructor(
      * - 예외 발생 → InstallResult.Failure 반환 (앱 크래시 방지)
      */
     fun installApk(apkFile: File): InstallResult {
+        Log.d("ApkDownloader", "installApk() | file=${apkFile.absolutePath} | exists=${apkFile.exists()} | SDK=${Build.VERSION.SDK_INT}")
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!context.packageManager.canRequestPackageInstalls()) {
+            val canInstall = context.packageManager.canRequestPackageInstalls()
+            Log.d("ApkDownloader", "canRequestPackageInstalls=$canInstall")
+            if (!canInstall) {
                 return try {
                     val settingsIntent = Intent(
                         Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:${context.packageName}"),
                     ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
                     context.startActivity(settingsIntent)
+                    Log.d("ApkDownloader", "설정 화면 오픈 → PermissionRequired")
                     InstallResult.PermissionRequired
                 } catch (e: Exception) {
                     Log.e("ApkDownloader", "설정 화면 열기 실패", e)
@@ -131,11 +136,14 @@ class ApkDownloader @Inject constructor(
 
         return try {
             if (!apkFile.exists()) {
+                Log.e("ApkDownloader", "APK 파일 없음: ${apkFile.absolutePath}")
                 return InstallResult.Failure("APK 파일을 찾을 수 없습니다")
             }
 
             val authority = "${context.packageName}.fileprovider"
+            Log.d("ApkDownloader", "FileProvider authority=$authority")
             val apkUri: Uri = FileProvider.getUriForFile(context, authority, apkFile)
+            Log.d("ApkDownloader", "apkUri=$apkUri")
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
@@ -143,6 +151,7 @@ class ApkDownloader @Inject constructor(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
+            Log.d("ApkDownloader", "startActivity(설치 intent) 성공 → Success")
             InstallResult.Success
         } catch (e: ActivityNotFoundException) {
             Log.e("ApkDownloader", "APK 설치 앱 없음", e)
