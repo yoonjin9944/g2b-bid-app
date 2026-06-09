@@ -6,7 +6,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-files-path
         name="apk_downloads"
-        path="Downloads/" />
+        path="Download/" />
     <!-- getExternalFilesDir 이 null 일 때 내부 저장소 폴백 -->
     <files-path
         name="apk_downloads_internal"
